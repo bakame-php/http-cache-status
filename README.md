@@ -9,15 +9,15 @@ This package contains classes used to parse, validate and manipulate the [Cache-
 use Bakame\Http\CacheStatus\Field;
 use Bakame\Http\CacheStatus\ForwardedReason;
 use Bakame\Http\CacheStatus\HandledRequestCache;
-use Psr\Http\Message\ResponseInterface;
 
-/* @var ResponseInterface $response */
+/* @var Psr\Http\Message\ResponseInterface $response */
 $headerLine = $response->getHeaderLine(Field::NAME);
 // 'ReverseProxyCache; hit, ForwardProxyCache; fwd=uri-miss; collapsed; stored';
-
 $statusCode = $response->getStatusCode(); //304
-/* @var ResponseInterface $response */
+
 $cacheStatus = Field::fromHttpValue($headerLine, $statusCode);
+//you can also use the $_SERVER array
+$cacheStatus = Field::fromSapi($_SERVER);
 
 count($cacheStatus); // returns 2 (the number of HandledRequestCache instances parsed)
 
@@ -25,16 +25,20 @@ $cacheClosestToTheOrigin = $cacheStatus->closestToOrigin(); // the handled reque
 $cacheClosestToTheClient = $cacheStatus->closestToUser(); // the handled request cache closest to the origin server
 
 $cacheClosestToTheOrigin->hit; // return true
-$cacheClosestToTheOrigin->forwardReason; // return null
+$cacheClosestToTheOrigin->forward; // return null
 $cacheClosestToTheClient->hit; // return false
-$cacheClosestToTheClient->forwardReason; // return ForwardReason::UriMiss
-$cacheClosestToTheClient->forwardStatusCode; // return 304
+$cacheClosestToTheClient->forward->reason; // return ForwardReason::UriMiss
+$cacheClosestToTheClient->forward->statusCode; // return 304
+
+if ($cacheClosestToTheClient->forwardReason->isOneOf(ForwardedReason::Miss, ForwardedReason::UriMiss)) {
+    //you can do something useful here
+}
 
 $newCacheStatus = $cacheStatus->push(
     HandledRequestCache::serverIdentifierAsToken('BrowserCache')
-        ->wasForwarded(ForwardedReason::UriMiss);
+        ->wasForwarded(Forward::fromReason(ForwardedReason::UriMiss));
 );
-// or the alternative is also acceptable
+// or you can use push an HTTP header
 $newCacheStatus = $cacheStatus->push('BrowserCache; fwd=uri-miss');
 
 $newResponse = $response->withHeader(Field::NAME, $newCacheStatus);
@@ -44,4 +48,4 @@ echo $response->getHeaderLine(Field::NAME);
 
 **While we used PSR-7 ResponseInterface, The package parsing and serializing methods can use any HTTP abstraction package or PHP `$_SERVER` array.**
 
-This package depends on [HTTP Structured Fields for PHP](https://github.com/bakame-php/http-structured-fields)
+This package depends on [HTTP Structured Fields for PHP](https://github.com/bakame-php/http-structured-fields) v2.0, which is not yet stable.

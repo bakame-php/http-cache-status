@@ -5,23 +5,22 @@ declare(strict_types=1);
 namespace Bakame\Http\CacheStatus;
 
 use ArrayAccess;
-use Bakame\Http\StructuredFields\ForbiddenOperation;
 use Bakame\Http\StructuredFields\InnerList;
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\OuterList;
 use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
-use Bakame\Http\StructuredFields\ValidationError;
 use Closure;
 use Countable;
+use Iterator;
 use IteratorAggregate;
+use LogicException;
 use OutOfBoundsException;
 use Stringable;
-use Traversable;
 
 /**
- * The Cache-Status HTTP Response Header Field
+ * The Cache-Status HTTP Response Header Field.
  *
  * @see https://www.rfc-editor.org/rfc/rfc9211.html
  *
@@ -35,9 +34,12 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /** @var array<HandledRequestCache> */
     private array $caches;
 
-    public function __construct(HandledRequestCache ...$caches)
+    public function __construct(HandledRequestCache|Stringable|string ...$caches)
     {
-        $this->caches = $caches;
+        $this->caches = array_map(fn (HandledRequestCache|Stringable|string $value) => match (true) {
+            $value instanceof HandledRequestCache => $value,
+            default => HandledRequestCache::fromHttpValue((string) $value),
+        }, $caches);
     }
 
     /**
@@ -53,7 +55,7 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /**
      * Returns an instance from a Header Line and the optional response status code.
      */
-    public static function fromHttpValue(Stringable|string $httpHeaderLine, ?int $statusCode = null): self
+    public static function fromHttpValue(Stringable|string $httpHeaderLine = '', ?int $statusCode = null): self
     {
         return self::fromStructuredField(OuterList::fromHttpValue($httpHeaderLine), $statusCode);
     }
@@ -61,12 +63,12 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /**
      * Returns an instance from a Structured Field List and the optional response status code.
      */
-    public static function fromStructuredField(OuterList $structuredField, ?int $statusCode = null): self
+    private static function fromStructuredField(OuterList $structuredField, ?int $statusCode = null): self
     {
         return new self(...$structuredField->map(
             fn (Item|InnerList $item, int $offset): HandledRequestCache => match (true) {
                 $item instanceof Item => HandledRequestCache::fromStructuredField($item, $statusCode),
-                default => throw new ValidationError('The list must only contain Items.'),
+                default => throw new LogicException('The list must only contain Items.'),
             }
         ));
     }
@@ -88,26 +90,49 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     }
 
     /**
-     * @return Traversable<int, HandledRequestCache>
+     * Iterate over the handled request cache from the origin server to the user.
+     *
+     * @return Iterator<int, HandledRequestCache>
      */
-    public function getIterator(): Traversable
+    public function getIterator(): Iterator
     {
         return yield from $this->caches;
     }
 
+    /**
+     * Iterate backward over the handled request cache from the user to the origin server.
+     *
+     * The handled request cache index are preserved
+     *
+     * @return Iterator<int, HandledRequestCache>
+     */
+    public function reverseIterate(): Iterator
+    {
+        return yield from array_reverse($this->caches, true);
+    }
+
+    /**
+     * Returns the number of handled requests cache.
+     */
     public function count(): int
     {
         return count($this->caches);
     }
 
-    public function isEmpty(): bool
+    /**
+     * Tells whether there are some handled requests in header.
+     */
+    public function hasRequests(): bool
     {
-        return [] === $this->caches;
+        return [] !== $this->caches;
     }
 
-    public function isNotEmpty(): bool
+    /**
+     * Tells whether there is no handled requests in header.
+     */
+    public function hasNoRequest(): bool
     {
-        return ! $this->isEmpty();
+        return ! $this->hasRequests();
     }
 
     /**
@@ -160,11 +185,11 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     }
 
     /**
-     * Tells whether a handled request cache exists with the provided server identifier
+     * Tells whether a handled request cache exists with the provided server identifier.
      */
     public function contains(Token|string $serverIdentifier): bool
     {
-        $validate = fn (Token|string $token) : bool => match (true) {
+        $validate = fn (Token|string $token): bool => match (true) {
             $token instanceof Token => $serverIdentifier instanceof Token && $serverIdentifier->equals($token),
             default => $token === $serverIdentifier,
         };
@@ -196,12 +221,12 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
 
     public function offsetUnset(mixed $offset): void
     {
-        throw new ForbiddenOperation(self::class.' instance can not be updated using '.ArrayAccess::class.' methods.');
+        throw new LogicException(self::class.' instance can not be updated using '.ArrayAccess::class.' methods.');
     }
 
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        throw new ForbiddenOperation(self::class.' instance can not be updated using '.ArrayAccess::class.' methods.');
+        throw new LogicException(self::class.' instance can not be updated using '.ArrayAccess::class.' methods.');
     }
 
     /**
@@ -209,17 +234,14 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
      */
     public function push(HandledRequestCache|Stringable|string ...$values): self
     {
-        return new self(
-            ...$this->caches,
-            ...array_map(fn (HandledRequestCache|Stringable|string $value) => match (true) {
-                $value instanceof HandledRequestCache => $value,
-                default => HandledRequestCache::fromHttpValue((string) $value),
-            }, $values)
-        );
+        return match ($values) {
+            [] => $this,
+            default => new self(...$this->caches, ...$values),
+        };
     }
 
     /**
-     * Filter the handled request caches
+     * Filter the handled request caches.
      *
      * This method MUST retain the state of the current instance,
      * and return an instance that contains the specified changes.
