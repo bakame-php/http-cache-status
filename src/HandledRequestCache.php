@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Bakame\Http\CacheStatus;
 
-use Bakame\Http\StructuredFields\Ietf;
 use Bakame\Http\StructuredFields\Item;
+use Bakame\Http\StructuredFields\ItemValidator;
+use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredField;
 use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
-use Bakame\Http\StructuredFields\ValidationError;
+use LogicException;
 use Stringable;
 
 /**
@@ -24,22 +25,18 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     private function __construct(
         public readonly Token|string $servedBy,
         public readonly bool $hit = true,
-        public readonly ?ForwardedReason $forwardReason = null,
-        public readonly ?int $forwardStatusCode = null,
-        public readonly bool $stored = false,
-        public readonly bool $collapsed = false,
+        public readonly ?Forward  $forward = null,
         public readonly ?int $ttl = null,
         public readonly ?string $key = null,
         public readonly Token|string|null $detail = null,
     ) {
         match (true) {
-            !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new ValidationError('The handled request cache identifier must be a Token or a string.'),
-            (null !== $this->forwardReason && $this->hit) || (null === $this->forwardReason && !$this->hit) => throw new ValidationError('The handled request cache must be a hit or forwarded.'),
-            null !== $this->key && !Type::String->supports($this->key) => throw new ValidationError('The `key` parameter must be a string or null.'),
-            null !== $this->ttl && !Type::Integer->supports($this->ttl) => throw new ValidationError('The `ttl` parameter must be a integer or null.'),
-            null !== $this->detail && !Type::String->supports($this->detail) && !Type::Token->supports($this->detail)  => throw new ValidationError('The `detail` parameter must be a string or a Token when present.'),
-            null !== $this->forwardStatusCode && ($this->forwardStatusCode < 100 || $this->forwardStatusCode >= 600) => throw new ValidationError('The `forwardStatusCode` must be a valid HTTP status code when present.'),
-            null === $this->forwardReason && (null !== $this->forwardStatusCode || $this->stored || $this->collapsed) => throw new ValidationError('The cache `forwardReason` dependent parameters must not be set if the handled request cache is a hit.'),
+            !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new LogicException('The handled request cache identifier must be a Token or a string.'),
+            null !== $this->forward && $this->hit  => throw new LogicException('The handled request cache can not be both a hit and forwarded.'),
+            null === $this->forward && !$this->hit => throw new LogicException('The handled request cache must be a hit or forwarded.'),
+            null !== $this->key && !Type::String->supports($this->key) => throw new LogicException('The `key` parameter must be a string or null.'),
+            null !== $this->ttl && !Type::Integer->supports($this->ttl) => throw new LogicException('The `ttl` parameter must be a integer or null.'),
+            null !== $this->detail && !Type::String->supports($this->detail) && !Type::Token->supports($this->detail)  => throw new LogicException('The `detail` parameter must be a string or a Token when present.'),
             default => null,
         };
     }
@@ -52,98 +49,77 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         return self::fromStructuredField(Item::fromHttpValue($value), $statusCode);
     }
 
+    private static function validator(): ItemValidator
+    {
+        static $validator;
+
+        $validator ??= ItemValidator::new()
+            ->value(fn (mixed $value): bool|string => match (true) {
+                Type::fromVariable($value)->isOneOf(Type::String, Type::Token) => true,
+                default => 'The cache name must be a Token or a string.',
+            })
+            ->parameters(function (Parameters $parameters): bool|string {
+                if (!$parameters->allowedKeys(Parameter::class)) {
+                    return 'The cache contains invalid parameters.';
+                }
+
+                $hit = !in_array($parameters->valueByKey(Parameter::Hit, default: false), [null, false], true);
+                $fwd = $parameters->valueByKey(Parameter::Forward);
+
+                return match (true) {
+                    !$hit && null !== $fwd,
+                    $hit && null === $fwd => true,
+                    default => "The 'hit' and 'fwd' parameters are mutually exclusive.",
+                };
+            })
+            ->parametersByKeys(Parameter::rules());
+
+        return $validator;
+    }
+
     /**
      * Returns an instance from a Structured Field Item and the optional response status code.
      */
     public static function fromStructuredField(Item $item, ?int $statusCode = null): self
     {
         if (null !== $statusCode && ($statusCode < 100 || $statusCode > 599)) {
-            throw new ValidationError('the default forward status code must be a valid HTTP status code when present.');
+            throw new LogicException('the default forward status code must be a valid HTTP status code when present.');
         }
 
-        /** @var Token|string $identifier */
-        $identifier = $item->value(
-            fn (mixed $value) => match (true) {
-                is_string($value),
-                $value instanceof Token => null,
-                default => 'The cache name must be a Token or a string.',
-            },
-        );
-
-        if (!$item->parameters()->only('hit', 'fwd', 'fwd-status', 'stored', 'collapsed', 'ttl', 'key', 'detail')) {
-            throw new ValidationError('The cache contains invalid parameters.');
+        $parsedItem = self::validator()->validate($item);
+        if ($parsedItem->errors->hasErrors()) {
+            throw new LogicException('The submitted item is an invalid handled request cache status', previous: $parsedItem->errors->toException());
         }
 
-        /** @var bool $hit */
-        $hit = $item->parameter(
-            key: 'hit',
-            validate: fn (mixed $value) => is_bool($value) ? null : 'The hit parameter must be a boolean.',
-            default: false,
-        );
-
-        /** @var ?int $ttl */
-        $ttl = $item->parameter(
-            key: 'ttl',
-            validate: fn (mixed $value) => is_int($value) ? null : 'The ttl parameter must be a int.',
-        );
-
-        /** @var ?string $key */
-        $key = $item->parameter(
-            key: 'key',
-            validate: fn (mixed $value) => is_string($value) ? null : 'The key parameter must be a string.',
-        );
-
-        /** @var Token|string|null $detail */
-        $detail = $item->parameter(
-            key: 'detail',
-            validate: fn (mixed $value) => match (true) {
-                is_string($value),
-                !$value instanceof Token => null,
-                default => 'The detail parameter must be a string or a Token.',
-            }
-        );
-
-        /** @var ?Token $fwd */
-        $fwd = $item->parameter(
-            key: 'fwd',
-            validate: fn (mixed $value) => match (true) {
-                !$value instanceof Token => 'The fwd parameter must be a Token.',
-                null === ForwardedReason::tryFromToken($value) => 'The fwd parameter value is invalid.',
-                default => null,
-            }
-        );
-
-        /** @var ?int $forwardStatus */
-        $forwardStatus = $item->parameter(
-            key: 'fwd-status',
-            validate: fn (mixed $value) => is_int($value) ? null : 'The fwd-status parameter must be a integer.',
-            default: null !== $fwd ? $statusCode : null,
-        );
-
-        /** @var bool $stored */
-        $stored = $item->parameter(
-            key: 'stored',
-            validate: fn (mixed $value) => is_bool($value) ? null : 'The stored parameter must be a boolean.',
-            default: false,
-        );
-
-        /** @var bool $collapsed */
-        $collapsed = $item->parameter(
-            key: 'collapsed',
-            validate: fn (mixed $value) => is_bool($value) ? null : 'The collapsed parameter must be a boolean.',
-            default: false,
-        );
+        /** @var Token|string $servedBy */
+        $servedBy = $parsedItem->value;
+        /**
+         * @var array{
+         *    hit: bool,
+         *    ttl: ?int,
+         *    key: ?string,
+         *    detail: Token|string|null,
+         *    fwd: ?Token,
+         *    fwd-status: ?int,
+         *    collapsed: bool,
+         *    stored: bool
+         * } $parameters
+         */
+        $parameters = $parsedItem->parameters;
+        $forward = null !== $parameters['fwd'] ? new Forward(
+            ForwardedReason::fromToken($parameters['fwd']),
+            $parameters['fwd-status'] ?? $statusCode,
+            $parameters['collapsed'],
+            $parameters['stored']
+        ) : null;
 
         return new self(
-            $identifier,
-            $hit,
-            null !== $fwd ? ForwardedReason::fromToken($fwd) : null,
-            $forwardStatus,
-            $stored,
-            $collapsed,
-            $ttl,
-            $key,
-            $detail
+            $servedBy,
+            $parameters['hit'],
+            $forward,
+            $parameters['ttl'],
+            $parameters['key'],
+            $parameters['detail'],
         );
     }
 
@@ -178,20 +154,11 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     }
 
     /**
-     * Tells whether the handled request cache is a hit or is forwarded.
-     * Both states are mutually exclusive.
-     */
-    public function isHit(): bool
-    {
-        return $this->hit;
-    }
-
-    /**
      * @throws StructuredFieldError
      */
     public function __toString(): string
     {
-        return $this->toStructuredField()->toHttpValue(Ietf::Rfc9651);
+        return $this->toStructuredField()->toHttpValue();
     }
 
     public function toStructuredField(): StructuredField
@@ -200,14 +167,11 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
             $this->servedBy,
             array_filter([
                 ['hit', $this->hit],
-                ['fwd', $this->forwardReason?->toToken()],
-                ['fwd-status', $this->forwardStatusCode],
-                ['stored', $this->stored],
-                ['collapsed', $this->collapsed],
+                ...($this->forward?->toPairs() ?? [['fwd', null]]),
                 ['ttl', $this->ttl],
                 ['key', $this->key],
                 ['detail', $this->detail],
-            ], fn (array $pair): bool => null !== $pair[1] && false !== $pair[1]),
+            ], fn (array $pair): bool => !in_array($pair[1], [null, false], true)),
         ]);
     }
 
@@ -223,7 +187,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     {
         return match (true) {
             $this->hit => $this,
-            default => new self($this->servedBy, true, null, null, false, false, $this->ttl, $this->key, $this->detail),
+            default => new self($this->servedBy, true, null, $this->ttl, $this->key, $this->detail),
         };
     }
 
@@ -235,13 +199,20 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
      * This method MUST retain the state of the current instance,
      * and return an instance that contains the specified changes.
      */
-    public function wasForwarded(ForwardedReason $forwardReason, ?int $forwardStatus = null, bool $stored = false, bool $collapsed = false): self
+    public function wasForwarded(Forward $forward): self
     {
-        return new self($this->servedBy, false, $forwardReason, $forwardStatus, $stored, $collapsed, $this->ttl, $this->key, $this->detail);
+        return new self(
+            $this->servedBy,
+            false,
+            $forward,
+            $this->ttl,
+            $this->key,
+            $this->detail
+        );
     }
 
     /**
-     * Change the response's remaining freshness lifetime as calculated by the cache
+     * Change the response's remaining freshness lifetime as calculated by the cache.
      *
      * This method MUST retain the state of the current instance,
      * and return an instance that contains the specified changes.
@@ -250,7 +221,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     {
         return match ($ttl) {
             $this->ttl => $this,
-            default => new self($this->servedBy, $this->hit, $this->forwardReason, $this->forwardStatusCode, $this->stored, $this->collapsed, $ttl, $this->key, $this->detail),
+            default => new self($this->servedBy, $this->hit, $this->forward, $ttl, $this->key, $this->detail),
         };
     }
 
@@ -266,7 +237,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     {
         return match ($detail) {
             $this->detail => $this,
-            default => new self($this->servedBy, $this->hit, $this->forwardReason, $this->forwardStatusCode, $this->stored, $this->collapsed, $this->ttl, $this->key, $detail),
+            default => new self($this->servedBy, $this->hit, $this->forward, $this->ttl, $this->key, $detail),
         };
     }
 
@@ -289,7 +260,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         return match (true) {
             $this->detail === $detail,
             $detail?->equals($this->detail) => $this,
-            default => new self($this->servedBy, $this->hit, $this->forwardReason, $this->forwardStatusCode, $this->stored, $this->collapsed, $this->ttl, $this->key, $detail),
+            default => new self($this->servedBy, $this->hit, $this->forward, $this->ttl, $this->key, $detail),
         };
     }
 
@@ -305,7 +276,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     {
         return match ($key) {
             $this->key => $this,
-            default => new self($this->servedBy, $this->hit, $this->forwardReason, $this->forwardStatusCode, $this->stored, $this->collapsed, $this->ttl, $key, $this->detail),
+            default => new self($this->servedBy, $this->hit, $this->forward, $this->ttl, $key, $this->detail),
         };
     }
 }

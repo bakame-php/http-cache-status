@@ -37,10 +37,11 @@ final class HandledRequestCacheTest extends TestCase
     #[Test]
     public function it_can_create_a_cache_status_progressively(): void
     {
+        $forward = new Forward(reason:ForwardedReason::Miss, statusCode: 304, collapsed: true);
         $cacheForwarded = HandledRequestCache::serverIdentifierAsString(serverIdentifier: '10.0.0.7')
             ->withDetailAsString('This is a detail')
             ->withTtl(376)
-            ->wasForwarded(forwardReason: ForwardedReason::Miss, forwardStatus: 304, collapsed: true)
+            ->wasForwarded($forward)
             ->withKey(null)
         ;
 
@@ -49,17 +50,17 @@ final class HandledRequestCacheTest extends TestCase
         self::assertSame('10.0.0.7', $cacheForwarded->servedBy());
         self::assertFalse($cacheForwarded->hit);
         self::assertSame(376, $cacheForwarded->ttl);
-        self::assertSame(ForwardedReason::Miss, $cacheForwarded->forwardReason);
-        self::assertSame(304, $cacheForwarded->forwardStatusCode);
-        self::assertTrue($cacheForwarded->collapsed);
+
+        self::assertInstanceOf(Forward::class, $cacheForwarded->forward);
+        self::assertSame(ForwardedReason::Miss, $cacheForwarded->forward->reason);
+        self::assertSame(304, $cacheForwarded->forward->statusCode);
+        self::assertTrue($cacheForwarded->forward->collapsed);
+
         self::assertSame('"10.0.0.7";fwd=miss;fwd-status=304;collapsed;ttl=376;detail="This is a detail"', (string) $cacheForwarded);
         self::assertEquals($cacheForwarded, HandledRequestCache::fromStructuredField(Item::fromRfc9651($cacheForwarded)));
 
         $cacheHit = $cacheForwarded->wasHit();
-        self::assertNull($cacheHit->forwardReason);
-        self::assertNull($cacheHit->forwardStatusCode);
-        self::assertFalse($cacheHit->collapsed);
-        self::assertFalse($cacheHit->stored);
+        self::assertNull($cacheHit->forward);
     }
 
     #[Test]
@@ -82,10 +83,16 @@ final class HandledRequestCacheTest extends TestCase
 
         self::assertInstanceOf(HandledRequestCache::class, $closestToOrigin);
         self::assertInstanceOf(HandledRequestCache::class, $closestToClient);
+        self::assertSame($fieldList[-1], $closestToClient);
+        self::assertFalse($fieldList->hasNoRequest());
 
-        self::assertNull($closestToOrigin->forwardStatusCode);
-        self::assertSame($response->getStatusCode(), $intermediary->forwardStatusCode);
-        self::assertSame($response->getStatusCode(), $closestToClient->forwardStatusCode);
+        self::assertNull($closestToOrigin->forward);
+
+        self::assertInstanceOf(Forward::class, $intermediary->forward);
+        self::assertSame($response->getStatusCode(), $intermediary->forward->statusCode);
+
+        self::assertInstanceOf(Forward::class, $closestToClient->forward);
+        self::assertSame($response->getStatusCode(), $closestToClient->forward->statusCode);
         self::assertFalse(isset($fieldList[42]));
         self::assertFalse($fieldList->contains('Foobar'));
         self::assertTrue($fieldList->contains(Token::fromString('BrowserCache')));
@@ -95,9 +102,9 @@ final class HandledRequestCacheTest extends TestCase
         self::assertFalse($intermediary->hit);
         self::assertFalse($closestToClient->hit);
 
-        self::assertNull($closestToOrigin->forwardReason);
-        self::assertSame(ForwardedReason::UriMiss, $intermediary->forwardReason);
-        self::assertSame(ForwardedReason::UriMiss, $closestToClient->forwardReason);
+        self::assertNull($closestToOrigin->forward);
+        self::assertSame(ForwardedReason::UriMiss, $intermediary->forward->reason);
+        self::assertSame(ForwardedReason::UriMiss, $closestToClient->forward->reason);
 
         self::assertSame('ReverseProxyCache', $closestToOrigin->servedBy());
         self::assertSame('ForwardProxyCache', $intermediary->servedBy());

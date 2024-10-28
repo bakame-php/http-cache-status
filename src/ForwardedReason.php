@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\Token;
-use Bakame\Http\StructuredFields\ValidationError;
+use Bakame\Http\StructuredFields\Validation\Violation;
 use Stringable;
 
 /**
- * The possible reason for forwarded cache
+ * The possible reason for forwarded cache.
  *
  * @see https://www.rfc-editor.org/rfc/rfc9211.html
  */
@@ -31,7 +31,7 @@ enum ForwardedReason: string
 
     public static function fromToken(Token|Stringable|string $token): self
     {
-        return self::tryFromToken($token) ?? throw new ValidationError('The token represents an invalid value.');
+        return self::tryFromToken($token) ?? throw new Violation('The token represents an invalid value.');
     }
 
     public static function tryFromToken(Token|Stringable|string|null $token): ?self
@@ -64,5 +64,21 @@ enum ForwardedReason: string
             self::Stale => 'The cache was able to select a response for the request, but it was stale.',
             self::Partial => 'The cache was able to select a partial response for the request, but it did not contain all of the requested ranges (or the request was for the complete response).',
         };
+    }
+
+    public function equals(mixed $other): bool
+    {
+        return $other instanceof self && $other === $this;
+    }
+
+    public function isOneOf(mixed ...$other): bool
+    {
+        foreach ($other as $item) {
+            if ($this->equals($item)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
