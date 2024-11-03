@@ -12,7 +12,6 @@ use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
-use LogicException;
 use Stringable;
 
 /**
@@ -31,12 +30,12 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         public readonly Token|string|null $detail = null,
     ) {
         match (true) {
-            !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new LogicException('The handled request cache identifier must be a Token or a string.'),
-            null !== $this->forward && $this->hit  => throw new LogicException('The handled request cache can not be both a hit and forwarded.'),
-            null === $this->forward && !$this->hit => throw new LogicException('The handled request cache must be a hit or forwarded.'),
-            null !== $this->key && !Type::String->supports($this->key) => throw new LogicException('The `key` parameter must be a string or null.'),
-            null !== $this->ttl && !Type::Integer->supports($this->ttl) => throw new LogicException('The `ttl` parameter must be a integer or null.'),
-            null !== $this->detail && !Type::String->supports($this->detail) && !Type::Token->supports($this->detail)  => throw new LogicException('The `detail` parameter must be a string or a Token when present.'),
+            !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new Exception('The handled request cache identifier must be a Token or a string.'),
+            null !== $this->forward && $this->hit  => throw new Exception('The handled request cache can not be both a hit and forwarded.'),
+            null === $this->forward && !$this->hit => throw new Exception('The handled request cache must be a hit or forwarded.'),
+            null !== $this->key && !Type::String->supports($this->key) => throw new Exception('The `key` parameter must be a string or null.'),
+            null !== $this->ttl && !Type::Integer->supports($this->ttl) => throw new Exception('The `ttl` parameter must be a integer or null.'),
+            null !== $this->detail && !Type::String->supports($this->detail) && !Type::Token->supports($this->detail)  => throw new Exception('The `detail` parameter must be a string or a Token when present.'),
             default => null,
         };
     }
@@ -83,12 +82,12 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     public static function fromStructuredField(Item $item, ?int $statusCode = null): self
     {
         if (null !== $statusCode && ($statusCode < 100 || $statusCode > 599)) {
-            throw new LogicException('the default forward status code must be a valid HTTP status code when present.');
+            throw new Exception('the default forward status code must be a valid HTTP status code when present.');
         }
 
         $parsedItem = self::validator()->validate($item);
         if ($parsedItem->errors->hasErrors()) {
-            throw new LogicException('The submitted item is an invalid handled request cache status', previous: $parsedItem->errors->toException());
+            throw new Exception('The submitted item is an invalid handled request cache status', previous: $parsedItem->errors->toException());
         }
 
         /** @var Token|string $servedBy */

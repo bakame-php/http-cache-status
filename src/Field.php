@@ -15,7 +15,6 @@ use Closure;
 use Countable;
 use Iterator;
 use IteratorAggregate;
-use LogicException;
 use OutOfBoundsException;
 use Stringable;
 
@@ -68,7 +67,7 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
         return new self(...$structuredField->map(
             fn (Item|InnerList $item, int $offset): HandledRequestCache => match (true) {
                 $item instanceof Item => HandledRequestCache::fromStructuredField($item, $statusCode),
-                default => throw new LogicException('The list must only contain Items.'),
+                default => throw new Exception('The list must only contain Items.'),
             }
         ));
     }
@@ -221,12 +220,12 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
 
     public function offsetUnset(mixed $offset): void
     {
-        throw new LogicException(self::class.' instance can not be updated using '.ArrayAccess::class.' methods.');
+        throw new Exception(self::class.' instance can not be updated using '.ArrayAccess::class.' methods.');
     }
 
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        throw new LogicException(self::class.' instance can not be updated using '.ArrayAccess::class.' methods.');
+        throw new Exception(self::class.' instance can not be updated using '.ArrayAccess::class.' methods.');
     }
 
     /**

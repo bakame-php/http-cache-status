@@ -10,7 +10,6 @@ use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use InvalidArgumentException;
-use LogicException;
 use Stringable;
 
 /**
@@ -25,7 +24,7 @@ final class Forward implements Stringable, StructuredFieldProvider
         public readonly bool $stored = false,
     ) {
         if (null !== $this->statusCode && ($this->statusCode < 100 || $this->statusCode >= 600)) {
-            throw new LogicException('The forward statusCode must be a valid HTTP status code when present.');
+            throw new Exception('The forward statusCode must be a valid HTTP status code when present.');
         }
     }
 
@@ -64,7 +63,7 @@ final class Forward implements Stringable, StructuredFieldProvider
     public function statusCode(?int $statusCode): self
     {
         if (null !== $statusCode && ($statusCode < 100 || $statusCode >= 600)) {
-            throw new LogicException('The forward statusCode must be a valid HTTP status code.');
+            throw new Exception('The forward statusCode must be a valid HTTP status code.');
         }
 
         if ($statusCode === $this->statusCode) {

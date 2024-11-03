@@ -22,7 +22,7 @@ $cacheStatus = Field::fromSapi($_SERVER);
 count($cacheStatus); // returns 2 (the number of HandledRequestCache instances parsed)
 
 $cacheClosestToTheOrigin = $cacheStatus->closestToOrigin(); // the handled request cache closest to the origin server
-$cacheClosestToTheClient = $cacheStatus->closestToUser(); // the handled request cache closest to the origin server
+$cacheClosestToTheClient = $cacheStatus->closestToUser(); // the handled request cache closest to the user
 
 $cacheClosestToTheOrigin->hit; // return true
 $cacheClosestToTheOrigin->forward; // return null
