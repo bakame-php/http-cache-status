@@ -12,6 +12,7 @@ use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
+use Bakame\Http\StructuredFields\Validation\ProcessedItem;
 use Stringable;
 
 /**
@@ -58,17 +59,17 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
                 default => 'The cache name must be a Token or a string.',
             })
             ->parameters(function (Parameters $parameters): bool|string {
-                if (!$parameters->allowedKeys(Parameter::class)) {
+                if (!$parameters->allowedKeys(Parameter::list())) {
                     return 'The cache contains invalid parameters.';
                 }
 
-                $hit = !in_array($parameters->valueByKey(Parameter::Hit, default: false), [null, false], true);
-                $fwd = $parameters->valueByKey(Parameter::Forward);
+                $hit = !in_array($parameters->valueByKey(Parameter::Hit->value, default: false), [null, false], true);
+                $fwd = $parameters->valueByKey(Parameter::Forward->value);
 
                 return match (true) {
                     !$hit && null !== $fwd,
                     $hit && null === $fwd => true,
-                    default => "The 'hit' and 'fwd' parameters are mutually exclusive.",
+                    default => "The '".Parameter::Hit->value."' and '".Parameter::Forward->value."' parameters are mutually exclusive.",
                 };
             })
             ->parametersByKeys(Parameter::rules());
@@ -85,11 +86,13 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
             throw new Exception('the default forward status code must be a valid HTTP status code when present.');
         }
 
-        $parsedItem = self::validator()->validate($item);
-        if ($parsedItem->errors->hasErrors()) {
-            throw new Exception('The submitted item is an invalid handled request cache status', previous: $parsedItem->errors->toException());
+        $validation = self::validator()->validate($item);
+        if ($validation->isFailed()) {
+            throw new Exception('The submitted item is an invalid handled request cache status', previous: $validation->errors->toException());
         }
 
+        /** @var ProcessedItem $parsedItem */
+        $parsedItem = $validation->data;
         /** @var Token|string $servedBy */
         $servedBy = $parsedItem->value;
         /**
@@ -105,20 +108,20 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
          * } $parameters
          */
         $parameters = $parsedItem->parameters;
-        $forward = null !== $parameters['fwd'] ? new Forward(
-            ForwardedReason::fromToken($parameters['fwd']),
-            $parameters['fwd-status'] ?? $statusCode,
-            $parameters['collapsed'],
-            $parameters['stored']
+        $forward = null !== $parameters[Parameter::Forward->value] ? new Forward(
+            ForwardedReason::fromToken($parameters[Parameter::Forward->value]),
+            $parameters[Parameter::ForwardStatusCode->value] ?? $statusCode,
+            $parameters[Parameter::Collapsed->value],
+            $parameters[Parameter::Stored->value]
         ) : null;
 
         return new self(
             $servedBy,
-            $parameters['hit'],
+            $parameters[Parameter::Hit->value],
             $forward,
-            $parameters['ttl'],
-            $parameters['key'],
-            $parameters['detail'],
+            $parameters[Parameter::TimeToLive->value],
+            $parameters[Parameter::Key->value],
+            $parameters[Parameter::Detail->value],
         );
     }
 
@@ -165,11 +168,11 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         return Item::fromPair([
             $this->servedBy,
             array_filter([
-                ['hit', $this->hit],
-                ...($this->forward?->toPairs() ?? [['fwd', null]]),
-                ['ttl', $this->ttl],
-                ['key', $this->key],
-                ['detail', $this->detail],
+                [Parameter::Hit->value, $this->hit],
+                ...($this->forward?->toPairs() ?? [[Parameter::Forward->value, null]]),
+                [Parameter::TimeToLive->value, $this->ttl],
+                [Parameter::Key->value, $this->key],
+                [Parameter::Detail->value, $this->detail],
             ], fn (array $pair): bool => !in_array($pair[1], [null, false], true)),
         ]);
     }

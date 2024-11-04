@@ -56,4 +56,12 @@ enum Parameter: string
             []
         );
     }
+
+    /**
+     * @return array<string>
+     */
+    public static function list(): array
+    {
+        return array_map(fn (self $case) => $case->value, self::cases());
+    }
 }
