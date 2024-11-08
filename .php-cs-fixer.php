@@ -1,12 +1,13 @@
 <?php
+use PhpCsFixer\Runner\Parallel\ParallelConfigFactory;
 
 $finder = PhpCsFixer\Finder::create()
-    ->in(__DIR__ . '/src')
-;
+    ->in(__DIR__.'/src');
 
 $config = new PhpCsFixer\Config();
 
 return $config
+    ->setParallelConfig(ParallelConfigFactory::detect())
     ->setRules([
         '@PSR12' => true,
         'array_syntax' => ['syntax' => 'short'],
@@ -44,5 +45,4 @@ return $config
         'whitespace_after_comma_in_array' => true,
         'yoda_style' => true,
     ])
-    ->setFinder($finder)
-    ;
+    ->setFinder($finder);
