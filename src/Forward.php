@@ -6,16 +6,14 @@ namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredField;
-use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use InvalidArgumentException;
-use Stringable;
 
 /**
  * @phpstan-import-type SfType from StructuredField
  */
-final class Forward implements Stringable, StructuredFieldProvider
+final class Forward implements StructuredFieldProvider
 {
     public function __construct(
         public readonly ForwardedReason $reason,
@@ -89,14 +87,6 @@ final class Forward implements Stringable, StructuredFieldProvider
         }
 
         return new self($this->reason, $this->statusCode, $this->collapsed, $stored);
-    }
-
-    /**
-     * @throws StructuredFieldError
-     */
-    public function __toString(): string
-    {
-        return $this->toStructuredField()->toHttpValue();
     }
 
     public function toStructuredField(): Parameters
