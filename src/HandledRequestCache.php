@@ -190,14 +190,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
      */
     public function wasForwarded(Forward $forward): self
     {
-        return new self(
-            $this->servedBy,
-            false,
-            $forward,
-            $this->ttl,
-            $this->key,
-            $this->detail
-        );
+        return new self($this->servedBy, false, $forward, $this->ttl, $this->key, $this->detail);
     }
 
     /**
