@@ -3,13 +3,14 @@
 namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\ItemValidator;
+use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
 
 /**
- * @phpstan-import-type  SfParameterKeyRule from ItemValidator
+ * @phpstan-import-type SfParameterKeyRule from ItemValidator
  */
-enum Parameter: string
+enum Properties: string
 {
     case Hit = 'hit';
     case Forward = 'fwd';
@@ -23,7 +24,7 @@ enum Parameter: string
     /**
      * @return SfParameterKeyRule
      */
-    public function rule(): array
+    public function validateKey(): array
     {
         return match ($this) {
             self::Hit => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{key}' parameter must be a boolean.", 'default' => false],
@@ -48,20 +49,28 @@ enum Parameter: string
     /**
      * @return array<string, SfParameterKeyRule>
      */
-    public static function rules(): array
+    public static function validateKeys(): array
     {
         return array_reduce(
             self::cases(),
-            fn (array $rules, self $parameter): array => [...$rules, ...[$parameter->value => $parameter->rule()]],
+            fn (array $rules, self $parameter): array => [...$rules, ...[$parameter->value => $parameter->validateKey()]],
             []
         );
     }
 
-    /**
-     * @return array<string>
-     */
-    public static function list(): array
+    public static function validate(Parameters $parameters): bool|string
     {
-        return array_map(fn (self $case) => $case->value, self::cases());
+        if (!$parameters->allowedKeys(array_map(fn (self $case) => $case->value, self::cases()))) {
+            return 'The cache contains invalid parameters.';
+        }
+
+        $hit = !in_array($parameters->valueByKey(self::Hit->value, default: false), [null, false], true);
+        $fwd = $parameters->valueByKey(self::Forward->value);
+
+        return match (true) {
+            !$hit && null !== $fwd,
+            $hit && null === $fwd => true,
+            default => "The '".self::Hit->value."' and '".self::Forward->value."' parameters are mutually exclusive.",
+        };
     }
 }

@@ -6,7 +6,6 @@ namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\ItemValidator;
-use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredField;
 use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
@@ -58,21 +57,8 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
                 Type::fromVariable($value)->isOneOf(Type::String, Type::Token) => true,
                 default => 'The cache name must be a Token or a string.',
             })
-            ->parameters(function (Parameters $parameters): bool|string {
-                if (!$parameters->allowedKeys(Parameter::list())) {
-                    return 'The cache contains invalid parameters.';
-                }
-
-                $hit = !in_array($parameters->valueByKey(Parameter::Hit->value, default: false), [null, false], true);
-                $fwd = $parameters->valueByKey(Parameter::Forward->value);
-
-                return match (true) {
-                    !$hit && null !== $fwd,
-                    $hit && null === $fwd => true,
-                    default => "The '".Parameter::Hit->value."' and '".Parameter::Forward->value."' parameters are mutually exclusive.",
-                };
-            })
-            ->parametersByKeys(Parameter::rules());
+            ->parameters(Properties::validate(...))
+            ->parametersByKeys(Properties::validateKeys());
 
         return $validator;
     }
@@ -108,20 +94,20 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
          * } $parameters
          */
         $parameters = $parsedItem->parameters;
-        $forward = null !== $parameters[Parameter::Forward->value] ? new Forward(
-            ForwardedReason::fromToken($parameters[Parameter::Forward->value]),
-            $parameters[Parameter::ForwardStatusCode->value] ?? $statusCode,
-            $parameters[Parameter::Collapsed->value],
-            $parameters[Parameter::Stored->value]
+        $forward = null !== $parameters[Properties::Forward->value] ? new Forward(
+            ForwardedReason::fromToken($parameters[Properties::Forward->value]),
+            $parameters[Properties::ForwardStatusCode->value] ?? $statusCode,
+            $parameters[Properties::Collapsed->value],
+            $parameters[Properties::Stored->value]
         ) : null;
 
         return new self(
             $servedBy,
-            $parameters[Parameter::Hit->value],
+            $parameters[Properties::Hit->value],
             $forward,
-            $parameters[Parameter::TimeToLive->value],
-            $parameters[Parameter::Key->value],
-            $parameters[Parameter::Detail->value],
+            $parameters[Properties::TimeToLive->value],
+            $parameters[Properties::Key->value],
+            $parameters[Properties::Detail->value],
         );
     }
 
@@ -168,11 +154,11 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         return Item::fromPair([
             $this->servedBy,
             array_filter([
-                [Parameter::Hit->value, $this->hit],
-                ...($this->forward?->toPairs() ?? [[Parameter::Forward->value, null]]),
-                [Parameter::TimeToLive->value, $this->ttl],
-                [Parameter::Key->value, $this->key],
-                [Parameter::Detail->value, $this->detail],
+                [Properties::Hit->value, $this->hit],
+                ...($this->forward?->toPairs() ?? [[Properties::Forward->value, null]]),
+                [Properties::TimeToLive->value, $this->ttl],
+                [Properties::Key->value, $this->key],
+                [Properties::Detail->value, $this->detail],
             ], fn (array $pair): bool => !in_array($pair[1], [null, false], true)),
         ]);
     }

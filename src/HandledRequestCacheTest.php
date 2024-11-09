@@ -84,7 +84,7 @@ final class HandledRequestCacheTest extends TestCase
         self::assertInstanceOf(HandledRequestCache::class, $closestToOrigin);
         self::assertInstanceOf(HandledRequestCache::class, $closestToClient);
         self::assertSame($fieldList[-1], $closestToClient);
-        self::assertFalse($fieldList->hasNoRequest());
+        self::assertFalse($fieldList->isEmpty());
 
         self::assertNull($closestToOrigin->forward);
 

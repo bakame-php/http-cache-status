@@ -110,10 +110,10 @@ final class Forward implements Stringable, StructuredFieldProvider
     public function toPairs(): array
     {
         return array_filter([
-            [Parameter::Forward->value, $this->reason->toToken()],
-            [Parameter::ForwardStatusCode->value, $this->statusCode],
-            [Parameter::Stored->value, $this->stored],
-            [Parameter::Collapsed->value, $this->collapsed],
+            [Properties::Forward->value, $this->reason->toToken()],
+            [Properties::ForwardStatusCode->value, $this->statusCode],
+            [Properties::Stored->value, $this->stored],
+            [Properties::Collapsed->value, $this->collapsed],
         ], fn (array $pair): bool => !in_array($pair[1], [null, false], true));
     }
 
@@ -123,10 +123,10 @@ final class Forward implements Stringable, StructuredFieldProvider
     public function toAssociative(): array
     {
         return array_filter([
-            Parameter::Forward->value => $this->reason->toToken(),
-            Parameter::ForwardStatusCode->value => $this->statusCode,
-            Parameter::Stored->value => $this->stored,
-            Parameter::Collapsed->value => $this->collapsed,
+            Properties::Forward->value => $this->reason->toToken(),
+            Properties::ForwardStatusCode->value => $this->statusCode,
+            Properties::Stored->value => $this->stored,
+            Properties::Collapsed->value => $this->collapsed,
         ], fn (mixed $value): bool => !in_array($value, [null, false], true));
     }
 }

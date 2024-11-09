@@ -121,7 +121,7 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /**
      * Tells whether there are some handled requests in header.
      */
-    public function hasRequests(): bool
+    public function isNotEmpty(): bool
     {
         return [] !== $this->caches;
     }
@@ -129,9 +129,9 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /**
      * Tells whether there is no handled requests in header.
      */
-    public function hasNoRequest(): bool
+    public function isEmpty(): bool
     {
-        return ! $this->hasRequests();
+        return ! $this->isNotEmpty();
     }
 
     /**
