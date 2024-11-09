@@ -150,7 +150,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         return $this->toStructuredField()->toHttpValue();
     }
 
-    public function toStructuredField(): StructuredField
+    public function toStructuredField(): Item
     {
         return Item::new($this->servedBy)
             ->withParameters(
