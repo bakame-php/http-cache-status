@@ -29,6 +29,7 @@ use Stringable;
 class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFieldProvider, Stringable
 {
     public const NAME = 'cache-status';
+    public const SAPI_NAME = 'HTTP_CACHE_STATUS';
 
     /** @var array<HandledRequestCache> */
     private array $caches;
@@ -44,11 +45,11 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /**
      * Returns an instance from PHP SAPI.
      *
-     * @param array{'HTTP_CACHE_STATUS'?:string} $server
+     * @param array<string, string> $server
      */
-    public static function fromSapi(array $server = []): self
+    public static function fromSapi(array $server = [], string $name = self::SAPI_NAME): self
     {
-        return self::fromHttpValue($server['HTTP_CACHE_STATUS'] ?? '');
+        return self::fromHttpValue($server[$name] ?? '');
     }
 
     /**
@@ -62,9 +63,9 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /**
      * Returns an instance from a Structured Field List and the optional response status code.
      */
-    private static function fromStructuredField(OuterList $structuredField, ?int $statusCode = null): self
+    private static function fromStructuredField(OuterList $list, ?int $statusCode = null): self
     {
-        return new self(...$structuredField->map(
+        return new self(...$list->map(
             fn (Item|InnerList $item, int $offset): HandledRequestCache => match (true) {
                 $item instanceof Item => HandledRequestCache::fromStructuredField($item, $statusCode),
                 default => throw new Exception('The list must only contain Items.'),
