@@ -99,34 +99,13 @@ final class Forward implements Stringable, StructuredFieldProvider
         return $this->toStructuredField()->toHttpValue();
     }
 
-    public function toStructuredField(): StructuredField
+    public function toStructuredField(): Parameters
     {
-        return Parameters::fromPairs($this->toPairs());
-    }
-
-    /**
-     * @return array<array{0:string, 1:SfType}>
-     */
-    public function toPairs(): array
-    {
-        return array_filter([
-            [Properties::Forward->value, $this->reason->toToken()],
-            [Properties::ForwardStatusCode->value, $this->statusCode],
-            [Properties::Stored->value, $this->stored],
-            [Properties::Collapsed->value, $this->collapsed],
-        ], fn (array $pair): bool => !in_array($pair[1], [null, false], true));
-    }
-
-    /**
-     * @return array<string, SfType>
-     */
-    public function toAssociative(): array
-    {
-        return array_filter([
-            Properties::Forward->value => $this->reason->toToken(),
-            Properties::ForwardStatusCode->value => $this->statusCode,
-            Properties::Stored->value => $this->stored,
-            Properties::Collapsed->value => $this->collapsed,
-        ], fn (mixed $value): bool => !in_array($value, [null, false], true));
+        return Parameters::new()
+            ->append(Properties::Forward->value, $this->reason->toToken())
+            ->append(Properties::ForwardStatusCode->value, $this->statusCode)
+            ->append(Properties::Stored->value, $this->stored)
+            ->append(Properties::Collapsed->value, $this->collapsed)
+            ->filter(fn (array $pair): bool => false !== $pair[1]->value());
     }
 }
