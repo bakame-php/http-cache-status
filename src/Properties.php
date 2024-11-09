@@ -49,7 +49,7 @@ enum Properties: string
     /**
      * @return array<string, SfParameterKeyRule>
      */
-    public static function validateKeys(): array
+    public static function membersConstraints(): array
     {
         return array_reduce(
             self::cases(),
@@ -58,7 +58,7 @@ enum Properties: string
         );
     }
 
-    public static function validate(Parameters $parameters): bool|string
+    public static function containerConstraints(Parameters $parameters): bool|string
     {
         if (!$parameters->allowedKeys(array_map(fn (self $case) => $case->value, self::cases()))) {
             return 'The cache contains invalid parameters.';

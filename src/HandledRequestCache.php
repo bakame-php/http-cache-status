@@ -6,6 +6,7 @@ namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\ItemValidator;
+use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredField;
 use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
@@ -57,8 +58,8 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
                 Type::fromVariable($value)->isOneOf(Type::String, Type::Token) => true,
                 default => 'The cache name must be a Token or a string.',
             })
-            ->parameters(Properties::validate(...))
-            ->parametersByKeys(Properties::validateKeys());
+            ->parameters(Properties::containerConstraints(...))
+            ->parametersByKeys(Properties::membersConstraints());
 
         return $validator;
     }
@@ -151,16 +152,16 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
 
     public function toStructuredField(): StructuredField
     {
-        return Item::fromPair([
-            $this->servedBy,
-            array_filter([
-                [Properties::Hit->value, $this->hit],
-                ...($this->forward?->toPairs() ?? [[Properties::Forward->value, null]]),
-                [Properties::TimeToLive->value, $this->ttl],
-                [Properties::Key->value, $this->key],
-                [Properties::Detail->value, $this->detail],
-            ], fn (array $pair): bool => !in_array($pair[1], [null, false], true)),
-        ]);
+        return Item::new($this->servedBy)
+            ->withParameters(
+                Parameters::new()
+                    ->add(Properties::Hit->value, false === $this->hit ? null : $this->hit)
+                    ->mergePairs($this->forward?->toPairs() ?? [])
+                    ->add(Properties::TimeToLive->value, $this->ttl)
+                    ->add(Properties::Key->value, $this->key)
+                    ->add(Properties::Detail->value, $this->detail)
+                    ->filter(fn (array $pair): bool => false !== $pair[1]->value()),
+            );
     }
 
     /**
