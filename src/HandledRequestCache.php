@@ -155,7 +155,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         return Item::new($this->servedBy)
             ->withParameters(
                 Parameters::new()
-                    ->append(Properties::Hit->value, false === $this->hit ? null : $this->hit)
+                    ->append(Properties::Hit->value, $this->hit)
                     ->mergePairs($this->forward?->toStructuredField() ?? [])
                     ->append(Properties::TimeToLive->value, $this->ttl)
                     ->append(Properties::Key->value, $this->key)
