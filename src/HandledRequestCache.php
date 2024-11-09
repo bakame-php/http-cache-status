@@ -56,7 +56,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         $validator ??= ItemValidator::new()
             ->value(fn (mixed $value): bool|string => match (true) {
                 Type::fromVariable($value)->isOneOf(Type::String, Type::Token) => true,
-                default => 'The cache name must be a Token or a string.',
+                default => 'The cache name must be a HTTP structured field token or string.',
             })
             ->parameters(Properties::containerConstraints(...))
             ->parametersByKeys(Properties::membersConstraints());
@@ -70,7 +70,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     public static function fromStructuredField(Item $item, ?int $statusCode = null): self
     {
         if (null !== $statusCode && ($statusCode < 100 || $statusCode > 599)) {
-            throw new Exception('the default forward status code must be a valid HTTP status code when present.');
+            throw new Exception('The default forward status code must be a valid HTTP status code when present.');
         }
 
         $validation = self::validator()->validate($item);
