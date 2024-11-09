@@ -7,7 +7,6 @@ namespace Bakame\Http\CacheStatus;
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\ItemValidator;
 use Bakame\Http\StructuredFields\Parameters;
-use Bakame\Http\StructuredFields\StructuredField;
 use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
