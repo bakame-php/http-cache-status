@@ -11,7 +11,6 @@ use Bakame\Http\StructuredFields\OuterList;
 use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
-use Closure;
 use Countable;
 use Iterator;
 use IteratorAggregate;
@@ -246,9 +245,9 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
      * This method MUST retain the state of the current instance,
      * and return an instance that contains the specified changes.
      *
-     * @param Closure(HandledRequestCache, int): bool $callback
+     * @param callable(HandledRequestCache, int): bool $callback
      */
-    public function filter(Closure $callback): self
+    public function filter(callable $callback): self
     {
         return new self(...array_filter($this->caches, $callback, ARRAY_FILTER_USE_BOTH));
     }

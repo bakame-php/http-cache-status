@@ -8,7 +8,6 @@ use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredField;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
-use InvalidArgumentException;
 
 /**
  * @phpstan-import-type SfType from StructuredField
@@ -42,7 +41,7 @@ final class Forward implements StructuredFieldProvider
         }
 
         if (!$reason instanceof ForwardedReason) {
-            throw new InvalidArgumentException('Invalid forward reason.');
+            throw new Exception('Invalid forward reason.');
         }
 
         return $reason;
@@ -51,42 +50,35 @@ final class Forward implements StructuredFieldProvider
     public function reason(ForwardedReason|Token|string $reason): self
     {
         $reason = self::filterReason($reason);
-        if ($reason->equals($this->reason)) {
-            return $this;
-        }
 
-        return new self($reason, $this->statusCode, $this->collapsed, $this->stored);
+        return match ($reason) {
+            $this->reason => $this,
+            default => new self($reason, $this->statusCode, $this->collapsed, $this->stored),
+        };
     }
 
     public function statusCode(?int $statusCode): self
     {
-        if (null !== $statusCode && ($statusCode < 100 || $statusCode >= 600)) {
-            throw new Exception('The forward statusCode must be a valid HTTP status code.');
-        }
-
-        if ($statusCode === $this->statusCode) {
-            return $this;
-        }
-
-        return new self($this->reason, $statusCode, $this->collapsed, $this->stored);
+        return match (true) {
+            $this->statusCode === $statusCode => $this,
+            default => new self($this->reason, $statusCode, $this->collapsed, $this->stored),
+        };
     }
 
     public function collapsed(bool $collapsed): self
     {
-        if ($collapsed === $this->collapsed) {
-            return $this;
-        }
-
-        return new self($this->reason, $this->statusCode, $collapsed, $this->stored);
+        return match ($collapsed) {
+            $this->collapsed => $this,
+            default => new self($this->reason, $this->statusCode, $collapsed, $this->stored),
+        };
     }
 
     public function stored(bool $stored): self
     {
-        if ($stored === $this->stored) {
-            return $this;
-        }
-
-        return new self($this->reason, $this->statusCode, $this->collapsed, $stored);
+        return match ($stored) {
+            $this->stored => $this,
+            default => new self($this->reason, $this->statusCode, $this->collapsed, $stored),
+        };
     }
 
     public function toStructuredField(): Parameters

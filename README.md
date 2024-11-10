@@ -36,7 +36,7 @@ if ($cacheClosestToTheClient->forwardReason->isOneOf(ForwardedReason::Miss, Forw
 
 $newCacheStatus = $cacheStatus->push(
     HandledRequestCache::serverIdentifierAsToken('BrowserCache')
-        ->wasForwarded(Forward::fromReason(ForwardedReason::UriMiss));
+        ->wasForwarded(Forward::fromReason(ForwardedReason::UriMiss))
 );
 // or you can use push an HTTP header
 $newCacheStatus = $cacheStatus->push('BrowserCache; fwd=uri-miss');
