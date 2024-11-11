@@ -2,13 +2,13 @@
 
 namespace Bakame\Http\CacheStatus;
 
-use Bakame\Http\StructuredFields\ItemValidator;
 use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
+use Bakame\Http\StructuredFields\Validation\ParametersValidator;
 
 /**
- * @phpstan-import-type SfParameterKeyRule from ItemValidator
+ * @phpstan-import-type SfParameterKeyRule from ParametersValidator
  */
 enum Properties: string
 {
@@ -20,6 +20,37 @@ enum Properties: string
     case TimeToLive = 'ttl';
     case Key = 'key';
     case Detail = 'detail';
+
+    public static function validator(): ParametersValidator
+    {
+        static $validator;
+
+        $validator ??= ParametersValidator::new()
+            ->filterByCriteria(function (Parameters $parameters): bool|string {
+                if (!$parameters->allowedKeys(array_map(fn (self $case) => $case->value, self::cases()))) {
+                    return 'The cache contains invalid parameters.';
+                }
+
+                $hit = !in_array($parameters->valueByKey(self::Hit->value, default: false), [null, false], true);
+                $fwd = $parameters->valueByKey(self::Forward->value);
+
+                return match (true) {
+                    !$hit && null !== $fwd,
+                    $hit && null === $fwd => true,
+                    default => "The '".self::Hit->value."' and '".self::Forward->value."' parameters are mutually exclusive.",
+                };
+            })
+            ->filterByKeys(array_reduce(
+                self::cases(),
+                fn (array $rules, self $parameter): array => [
+                    ...$rules,
+                    ...[$parameter->value => $parameter->validateKey()],
+                ],
+                []
+            ));
+
+        return $validator;
+    }
 
     /**
      * @return SfParameterKeyRule
@@ -43,34 +74,6 @@ enum Properties: string
             }],
             self::Stored => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{key}' parameter must be a boolean.", 'default' => false],
             self::Collapsed => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{key}' parameter must be a boolean.", 'default' => false],
-        };
-    }
-
-    /**
-     * @return array<string, SfParameterKeyRule>
-     */
-    public static function membersConstraints(): array
-    {
-        return array_reduce(
-            self::cases(),
-            fn (array $rules, self $parameter): array => [...$rules, ...[$parameter->value => $parameter->validateKey()]],
-            []
-        );
-    }
-
-    public static function containerConstraints(Parameters $parameters): bool|string
-    {
-        if (!$parameters->allowedKeys(array_map(fn (self $case) => $case->value, self::cases()))) {
-            return 'The cache contains invalid parameters.';
-        }
-
-        $hit = !in_array($parameters->valueByKey(self::Hit->value, default: false), [null, false], true);
-        $fwd = $parameters->valueByKey(self::Forward->value);
-
-        return match (true) {
-            !$hit && null !== $fwd,
-            $hit && null === $fwd => true,
-            default => "The '".self::Hit->value."' and '".self::Forward->value."' parameters are mutually exclusive.",
         };
     }
 }

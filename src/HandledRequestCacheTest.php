@@ -110,4 +110,14 @@ final class HandledRequestCacheTest extends TestCase
         self::assertSame('ForwardProxyCache', $intermediary->servedBy());
         self::assertSame('BrowserCache', $closestToClient->servedBy());
     }
+
+    #[Test]
+    public function it_can_update_the_forward_parameters(): void
+    {
+        $cacheForwarded = HandledRequestCache::serverIdentifierAsString(serverIdentifier: '10.0.0.7')
+            ->wasForwarded('miss');
+
+        self::assertInstanceOf(Forward::class, $cacheForwarded->forward);
+        self::assertSame(ForwardedReason::Miss, $cacheForwarded->forward->reason);
+    }
 }

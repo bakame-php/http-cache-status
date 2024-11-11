@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\Item;
-use Bakame\Http\StructuredFields\ItemValidator;
 use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
+use Bakame\Http\StructuredFields\Validation\ItemValidator;
 use Bakame\Http\StructuredFields\Validation\ProcessedItem;
 use Stringable;
 
@@ -57,8 +57,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
                 Type::fromVariable($value)->isOneOf(Type::String, Type::Token) => true,
                 default => 'The cache name must be a HTTP structured field token or string.',
             })
-            ->parameters(Properties::containerConstraints(...))
-            ->parametersByKeys(Properties::membersConstraints());
+            ->parameters(Properties::validator());
 
         return $validator;
     }
@@ -94,17 +93,14 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
          * } $parameters
          */
         $parameters = $parsedItem->parameters;
-        $forward = null !== $parameters[Properties::Forward->value] ? new Forward(
-            ForwardedReason::fromToken($parameters[Properties::Forward->value]),
-            $parameters[Properties::ForwardStatusCode->value] ?? $statusCode,
-            $parameters[Properties::Collapsed->value],
-            $parameters[Properties::Stored->value]
-        ) : null;
 
         return new self(
             $servedBy,
             $parameters[Properties::Hit->value],
-            $forward,
+            null !== $parameters[Properties::Forward->value] ? Forward::fromReason($parameters[Properties::Forward->value])
+                ->statusCode($parameters[Properties::ForwardStatusCode->value] ?? $statusCode)
+                ->collapsed($parameters[Properties::Collapsed->value])
+                ->stored($parameters[Properties::Stored->value]) : null,
             $parameters[Properties::TimeToLive->value],
             $parameters[Properties::Key->value],
             $parameters[Properties::Detail->value],
@@ -187,8 +183,20 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
      * This method MUST retain the state of the current instance,
      * and return an instance that contains the specified changes.
      */
-    public function wasForwarded(Forward $forward): self
+    public function wasForwarded(Forward|ForwardedReason|Token|string $forward): self
     {
+        if (is_string($forward)) {
+            $forward = Token::fromString($forward);
+        }
+
+        if ($forward instanceof Token) {
+            $forward = ForwardedReason::fromToken($forward);
+        }
+
+        if ($forward instanceof ForwardedReason) {
+            $forward = Forward::fromReason($forward);
+        }
+
         return new self($this->servedBy, false, $forward, $this->ttl, $this->key, $this->detail);
     }
 
