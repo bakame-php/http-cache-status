@@ -37,8 +37,8 @@ final class HandledRequestCacheTest extends TestCase
     #[Test]
     public function it_can_create_a_cache_status_progressively(): void
     {
-        $forward = new Forward(reason:ForwardedReason::Miss, statusCode: 304, collapsed: true);
-        $cacheForwarded = HandledRequestCache::serverIdentifierAsString(serverIdentifier: '10.0.0.7')
+        $forward = new Forward(reason: ForwardedReason::Miss, statusCode: 304, collapsed: true);
+        $cacheForwarded = HandledRequestCache::serverIdentifierAsString('10.0.0.7')
             ->withDetailAsString('This is a detail')
             ->withTtl(376)
             ->wasForwarded($forward)
@@ -114,7 +114,7 @@ final class HandledRequestCacheTest extends TestCase
     #[Test]
     public function it_can_update_the_forward_parameters(): void
     {
-        $cacheForwarded = HandledRequestCache::serverIdentifierAsString(serverIdentifier: '10.0.0.7')
+        $cacheForwarded = HandledRequestCache::serverIdentifierAsString('10.0.0.7')
             ->wasForwarded('miss');
 
         self::assertInstanceOf(Forward::class, $cacheForwarded->forward);

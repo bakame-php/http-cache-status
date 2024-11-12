@@ -37,7 +37,7 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     {
         $this->caches = array_map(fn (HandledRequestCache|Stringable|string $value) => match (true) {
             $value instanceof HandledRequestCache => $value,
-            default => HandledRequestCache::fromHttpValue((string) $value),
+            default => HandledRequestCache::fromHttpValue($value),
         }, $caches);
     }
 
@@ -67,7 +67,7 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
         return new self(...$list->map(
             fn (Item|InnerList $item, int $offset): HandledRequestCache => match (true) {
                 $item instanceof Item => HandledRequestCache::fromStructuredField($item, $statusCode),
-                default => throw new Exception('The list must only contain Items.'),
+                default => throw new Exception('The list must only contain item structure representing handled request cache.'),
             }
         ));
     }
@@ -188,11 +188,7 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
      */
     public function contains(Token|string $serverIdentifier): bool
     {
-        $validate = fn (Token|string $token): bool => match (true) {
-            $token instanceof Token => $serverIdentifier instanceof Token && $serverIdentifier->equals($token),
-            default => $token === $serverIdentifier,
-        };
-
+        $validate = fn (Token|string $token): bool => $token instanceof Token ? $token->equals($serverIdentifier) : $token === $serverIdentifier;
         foreach ($this->caches as $member) {
             if ($validate($member->servedBy)) {
                 return true;

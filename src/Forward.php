@@ -90,4 +90,16 @@ final class Forward implements StructuredFieldProvider
             ->append(Properties::Collapsed->value, $this->collapsed)
             ->filter(fn (array $pair): bool => false !== $pair[1]->value());
     }
+
+    public function equals(mixed $other): bool
+    {
+        return match (true) {
+            !$other instanceof self,
+            !$other->reason->equals($this->reason),
+            $other->statusCode !== $this->statusCode,
+            $other->stored !== $this->stored,
+            $other->collapsed !== $this->collapsed => false,
+            default => true,
+        };
+    }
 }

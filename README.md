@@ -17,7 +17,7 @@ $statusCode = $response->getStatusCode(); //304
 
 $cacheStatus = Field::fromHttpValue($headerLine, $statusCode);
 //you can also use the $_SERVER array
-$cacheStatus = Field::fromSapi($_SERVER);
+$cacheStatus = Field::fromSapi($_SERVER, Field::SAPI_NAME);
 
 count($cacheStatus); // returns 2 (the number of HandledRequestCache instances parsed)
 

@@ -35,20 +35,15 @@ enum ForwardedReason: string
 
     public static function tryFromToken(Token|Stringable|string|null $token): ?self
     {
-        if (null === $token) {
-            return null;
-        }
+        $token = match (true) {
+            $token instanceof Token => $token->toString(),
+            default => (string) $token,
+        };
 
-        if ($token instanceof Token) {
-            return self::tryFrom($token->toString());
-        }
-
-        $token = Token::tryFromString($token);
-        if (!$token instanceof Token) {
-            return null;
-        }
-
-        return self::tryFrom($token->toString());
+        return match (true) {
+            in_array($token, self::list(), true) => self::from($token),
+            default => null,
+        };
     }
 
     public function description(): string
@@ -86,6 +81,10 @@ enum ForwardedReason: string
      */
     public static function list(): array
     {
-        return array_map(fn (self $case) => $case->value, self::cases());
+        static $list;
+
+        $list ??= array_map(fn (self $case) => $case->value, self::cases());
+
+        return $list;
     }
 }

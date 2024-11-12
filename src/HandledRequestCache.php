@@ -6,7 +6,6 @@ namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\Parameters;
-use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
@@ -23,11 +22,11 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
 {
     private function __construct(
         public readonly Token|string $servedBy,
-        public readonly bool $hit = true,
-        public readonly ?Forward  $forward = null,
-        public readonly ?int $ttl = null,
-        public readonly ?string $key = null,
-        public readonly Token|string|null $detail = null,
+        public readonly bool $hit,
+        public readonly ?Forward $forward,
+        public readonly ?int $ttl,
+        public readonly ?string $key,
+        public readonly Token|string|null $detail,
     ) {
         match (true) {
             !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new Exception('The handled request cache identifier must be a Token or a string.'),
@@ -43,23 +42,9 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     /**
      * Returns an instance from a Header Line and the optional response status code.
      */
-    public static function fromHttpValue(string $value, ?int $statusCode = null): self
+    public static function fromHttpValue(Stringable|string $value, ?int $statusCode = null): self
     {
         return self::fromStructuredField(Item::fromHttpValue($value), $statusCode);
-    }
-
-    private static function validator(): ItemValidator
-    {
-        static $validator;
-
-        $validator ??= ItemValidator::new()
-            ->value(fn (mixed $value): bool|string => match (true) {
-                Type::fromVariable($value)->isOneOf(Type::String, Type::Token) => true,
-                default => 'The cache name must be a HTTP structured field token or string.',
-            })
-            ->parameters(Properties::validator());
-
-        return $validator;
     }
 
     /**
@@ -94,25 +79,41 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
          */
         $parameters = $parsedItem->parameters;
 
+        $forward = null === $parameters[Properties::Forward->value] ? null : Forward::fromReason($parameters[Properties::Forward->value])
+            ->statusCode($parameters[Properties::ForwardStatusCode->value] ?? $statusCode)
+            ->collapsed($parameters[Properties::Collapsed->value])
+            ->stored($parameters[Properties::Stored->value]);
+
         return new self(
-            $servedBy,
-            $parameters[Properties::Hit->value],
-            null !== $parameters[Properties::Forward->value] ? Forward::fromReason($parameters[Properties::Forward->value])
-                ->statusCode($parameters[Properties::ForwardStatusCode->value] ?? $statusCode)
-                ->collapsed($parameters[Properties::Collapsed->value])
-                ->stored($parameters[Properties::Stored->value]) : null,
-            $parameters[Properties::TimeToLive->value],
-            $parameters[Properties::Key->value],
-            $parameters[Properties::Detail->value],
+            servedBy: $servedBy,
+            hit: $parameters[Properties::Hit->value],
+            forward: $forward,
+            ttl: $parameters[Properties::TimeToLive->value],
+            key: $parameters[Properties::Key->value],
+            detail: $parameters[Properties::Detail->value],
         );
+    }
+
+    private static function validator(): ItemValidator
+    {
+        static $validator;
+
+        $validator ??= ItemValidator::new()
+            ->value(fn (mixed $value): bool|string => match (true) {
+                Type::fromVariable($value)->isOneOf(Type::String, Type::Token) => true,
+                default => 'The cache name must be a HTTP structured field token or string.',
+            })
+            ->parameters(Properties::validator());
+
+        return $validator;
     }
 
     /**
      * Returns a new instance with a server identifier as a string which is already hit.
      */
-    public static function serverIdentifierAsString(string $serverIdentifier): self
+    public static function serverIdentifierAsString(string $identifier): self
     {
-        return new self($serverIdentifier);
+        return new self($identifier, hit: true, forward: null, ttl: null, key: null, detail: null);
     }
 
     /**
@@ -120,10 +121,11 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
      */
     public static function serverIdentifierAsToken(Token|string $identifier): self
     {
-        return new self(match (true) {
-            $identifier instanceof Token => $identifier,
-            default => Token::fromString($identifier)
-        });
+        if (!$identifier instanceof Token) {
+            $identifier = Token::tryFromString($identifier) ?? throw new Exception('The handled request cache identifier must be a valid Token.');
+        }
+
+        return new self($identifier, hit: true, forward: null, ttl:null, key:null, detail: null);
     }
 
     /**
@@ -137,9 +139,6 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         };
     }
 
-    /**
-     * @throws StructuredFieldError
-     */
     public function __toString(): string
     {
         return $this->toStructuredField()->toHttpValue();
@@ -185,19 +184,17 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
      */
     public function wasForwarded(Forward|ForwardedReason|Token|string $forward): self
     {
-        if (is_string($forward)) {
-            $forward = Token::fromString($forward);
-        }
+        $forward = match (true) {
+            is_string($forward) => Forward::fromReason(ForwardedReason::tryFrom($forward) ?? throw new Exception('The submitted string is not a valid server identifier.')),
+            $forward instanceof Token => Forward::fromReason(ForwardedReason::fromToken($forward)),
+            $forward instanceof ForwardedReason => Forward::fromReason($forward),
+            default => $forward,
+        };
 
-        if ($forward instanceof Token) {
-            $forward = ForwardedReason::fromToken($forward);
-        }
-
-        if ($forward instanceof ForwardedReason) {
-            $forward = Forward::fromReason($forward);
-        }
-
-        return new self($this->servedBy, false, $forward, $this->ttl, $this->key, $this->detail);
+        return match (true) {
+            $forward->equals($this->forward) => $this,
+            default => new self($this->servedBy, false, $forward, $this->ttl, $this->key, $this->detail),
+        };
     }
 
     /**
@@ -240,11 +237,9 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
      */
     public function withDetailAsToken(Token|string|null $detail): self
     {
-        $detail = match (true) {
-            $detail instanceof Token,
-            null === $detail => $detail,
-            default => Token::fromString($detail),
-        };
+        if (is_string($detail)) {
+            $detail = Token::tryFromString($detail) ?? throw new Exception('The handled request cache detail must be a valid Token.');
+        }
 
         return match (true) {
             $this->detail === $detail,
