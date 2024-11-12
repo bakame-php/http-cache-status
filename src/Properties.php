@@ -23,31 +23,34 @@ enum Properties: string
 
     public static function validator(): ParametersValidator
     {
+        /** @var ?ParametersValidator $validator */
         static $validator;
 
-        $validator ??= ParametersValidator::new()
-            ->filterByCriteria(function (Parameters $parameters): bool|string {
-                if (!$parameters->allowedKeys(array_map(fn (self $case) => $case->value, self::cases()))) {
-                    return 'The cache contains invalid parameters.';
-                }
-
-                $hit = !in_array($parameters->valueByKey(self::Hit->value, default: false), [null, false], true);
-                $fwd = $parameters->valueByKey(self::Forward->value);
-
-                return match (true) {
-                    !$hit && null !== $fwd,
-                    $hit && null === $fwd => true,
-                    default => "The '".self::Hit->value."' and '".self::Forward->value."' parameters are mutually exclusive.",
-                };
-            })
-            ->filterByKeys(array_reduce(
+        if (null === $validator) {
+            /** @var array<string, SfParameterKeyRule> $filters */
+            $filters = array_reduce(
                 self::cases(),
-                fn (array $rules, self $parameter): array => [
-                    ...$rules,
-                    ...[$parameter->value => $parameter->validateKey()],
-                ],
+                fn (array $rules, self $property): array => [...$rules, ...[$property->value => $property->validateKey()]],
                 []
-            ));
+            );
+
+            $validator = ParametersValidator::new()
+                ->filterByCriteria(function (Parameters $parameters): bool|string {
+                    if (!$parameters->allowedKeys(array_map(fn (self $case) => $case->value, self::cases()))) {
+                        return 'The cache contains invalid parameters.';
+                    }
+
+                    $hit = !in_array($parameters->valueByKey(self::Hit->value, default: false), [null, false], true);
+                    $fwd = $parameters->valueByKey(self::Forward->value);
+
+                    return match (true) {
+                        !$hit && null !== $fwd,
+                            $hit && null === $fwd => true,
+                        default => "The '".self::Hit->value."' and '".self::Forward->value."' parameters are mutually exclusive.",
+                    };
+                })
+                ->filterByKeys($filters);
+        }
 
         return $validator;
     }

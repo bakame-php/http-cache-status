@@ -77,13 +77,14 @@ enum ForwardedReason: string
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public static function list(): array
     {
+        /** @var list<string>|null $list */
         static $list;
 
-        $list ??= array_map(fn (self $case) => $case->value, self::cases());
+        $list ??= array_map(fn (self $case): string => $case->value, self::cases());
 
         return $list;
     }

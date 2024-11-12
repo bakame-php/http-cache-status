@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bakame\Http\CacheStatus;
 
+use ArrayAccess;
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
@@ -77,7 +78,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
          *    stored: bool
          * } $parameters
          */
-        $parameters = $parsedItem->parameters;
+        $parameters = $parsedItem->parameters->values();
 
         $forward = null === $parameters[Properties::Forward->value] ? null : Forward::fromReason($parameters[Properties::Forward->value])
             ->statusCode($parameters[Properties::ForwardStatusCode->value] ?? $statusCode)
@@ -96,6 +97,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
 
     private static function validator(): ItemValidator
     {
+        /** @var ItemValidator|null $validator */
         static $validator;
 
         $validator ??= ItemValidator::new()
