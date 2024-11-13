@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Bakame\Http\CacheStatus;
 
-use ArrayAccess;
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;

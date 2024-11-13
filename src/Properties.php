@@ -45,7 +45,7 @@ enum Properties: string
 
                     return match (true) {
                         !$hit && null !== $fwd,
-                            $hit && null === $fwd => true,
+                        $hit && null === $fwd => true,
                         default => "The '".self::Hit->value."' and '".self::Forward->value."' parameters are mutually exclusive.",
                     };
                 })
