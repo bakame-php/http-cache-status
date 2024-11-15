@@ -5,7 +5,7 @@ This package contains classes used to parse, validate and manipulate the [Cache-
 
 ## Usage
 
-Unless explicitly stated, all the classes discribed hereafter are immutable.
+Unless explicitly stated, all the classes described hereafter are immutable.
 
 ### Parsing
 
@@ -27,12 +27,21 @@ $cacheStatus = Field::fromHttpValue($headerLine, $statusCode);
 ### Field Container
 
 The `Field` class is a container whose members are handled request cache information as they are added by the various
-server. The class implements PHP's `IteratorAggregate`, `ArrayAccess`, `Countable` and `Stringable` interface.
+servers. The class implements PHP's `IteratorAggregate`, `ArrayAccess`, `Countable` and `Stringable` interface.
 
 ```php
 echo $cacheStatus;    // returns 'ReverseProxyCache; hit, ForwardProxyCache; fwd=uri-miss; collapsed; stored';
-echo $cacheStatus[1]; // returns 'ForwardProxyCache; fwd=uri-miss; collapsed; stored';
+$cacheStatus[1];      // returns a HandledRequestCache instance
 count($cacheStatus);  // returns 2
+```
+
+You can also determine if a specific handled cache request exist either by supplying the cache index or its server identifier
+
+```php
+$cacheStatus->contains(Token::fromString('foobar')); // returns false
+$cacheStatus->indexOf(Token::fromString('foobar')); // returns null
+$cacheStatus->contains(Token::fromString('ReverseProxyCache')); // returns true
+$cacheStatus->indexOf(Token::fromString('ReverseProxyCache'));  // returns 0
 ```
 
 As per the RFC the `closestToOrigin` and `closestToUser` methods give you access to the caches closest to the 
@@ -43,13 +52,12 @@ $cacheClosestToTheOrigin = $cacheStatus->closestToOrigin(); // the handled reque
 $cacheClosestToTheClient = $cacheStatus->closestToUser(); // the handled request cache closest to the user
 ```
 
-### The Handled Request Cache object
-
 Both methods return `null` if the cache does not exist or a `HandledRequestCache` instance.
 
+
+### The Handled Request Cache object
+
 ```php
-$cacheClosestToTheOrigin = $cacheStatus->closestToOrigin(); // the handled request cache closest to the origin server
-$cacheClosestToTheClient = $cacheStatus->closestToUser(); // the handled request cache closest to the user
 $cacheClosestToTheOrigin->hit; // return true
 $cacheClosestToTheOrigin->forward; // return null
 $cacheClosestToTheClient->hit; // return false
@@ -57,7 +65,7 @@ $cacheClosestToTheClient->forward->reason; // return ForwardReason::UriMiss
 $cacheClosestToTheClient->forward->statusCode; // return 304
 ```
 
-A `HandledRequestCache` instance contains information about the cache and how it handled the current message.
+A `HandledRequestCache` instance contains information about the cache and how it was handled for the current message.
 In particular, in compliance with the RFC, if the `forward` property is present you will get extra information
 regarding the reason why the cache was forwarded.
 
@@ -102,17 +110,18 @@ echo $response->getHeaderLine(Field::NAME);
 **While we used PSR-7 ResponseInterface, The package parsing and serializing methods can use any HTTP abstraction package or PHP `$_SERVER` array.**
 
 ```php
-$cacheStatus = Field::fromSapiServer($_SERVER, 'HTTP_CACHE_STATUS');
+$cacheStatus = Field::fromSapiServer($_SERVER, Field::SAPI_NAME);
 $newCacheStatus = $cacheStatus->push('BrowserCache; fwd=uri-miss');
 
 header(Field::NAME.': '.$newCacheStatus);
 ```
 
-In this last example we use PHP native function to parse and add the correct header to the HTTP response.
+In this last example we use PHP native function to parse and add the correct header to the PHP emitted HTTP response.
 
-## Structured Field
+## Structured Fields
 
-This Header field is compliant with the HTTP Structured Field RFC. As such we take advantage of that fact by using 
-the [HTTP Structured Fields for PHP](https://github.com/bakame-php/http-structured-fields) v2.0,  which remove all the
-boilerplate needed for such header to be parsable and manipulable in PHP while staying compliant with all the different
-RFC.
+Because the Header field is compliant with the HTTP Structured Field RFC. We can easily parse it **but** were are also
+validating it against its specific RFC rules. To do so the package is dependent on
+the [HTTP Structured Fields for PHP](https://github.com/bakame-php/http-structured-fields) v2.0 package, which remove all the
+boilerplate needed for such header to be parsed, validated and manipulated in PHP while staying compliant with all the different
+RFCs.

@@ -40,20 +40,44 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     }
 
     /**
-     * Returns an instance from a Header Line and the optional response status code.
+     * Returns a new instance with a server identifier as a string which is already hit.
      */
-    public static function fromHttpValue(Stringable|string $value, ?int $statusCode = null): self
+    public static function serverIdentifierAsString(string $identifier): self
     {
-        return self::fromStructuredField(Item::fromHttpValue($value), $statusCode);
+        return new self($identifier, hit: true, forward: null, ttl: null, key: null, detail: null);
     }
 
     /**
-     * Returns an instance from a Structured Field Item and the optional response status code.
+     * Returns a new instance with a server identifier as a Token which is already hit.
      */
-    public static function fromStructuredField(Item $item, ?int $statusCode = null): self
+    public static function serverIdentifierAsToken(Token|string $identifier): self
+    {
+        if (!$identifier instanceof Token) {
+            $identifier = Token::tryFromString($identifier) ?? throw new Exception('The handled request cache identifier must be a valid Token.');
+        }
+
+        return new self($identifier, hit: true, forward: null, ttl:null, key:null, detail: null);
+    }
+
+    /**
+     * Returns an instance from a Header Line and the optional response status code.
+     */
+    public static function fromHttpValue(StructuredFieldProvider|Item|Stringable|string $item, ?int $statusCode = null): self
     {
         if (null !== $statusCode && ($statusCode < 100 || $statusCode > 599)) {
             throw new Exception('The default forward status code must be a valid HTTP status code when present.');
+        }
+
+        if ($item instanceof StructuredFieldProvider) {
+            $className = $item::class;
+            $item = $item->toStructuredField();
+            if (!$item instanceof Item) {
+                throw new Exception('The structured field provider `'.$className.'` must return an '.Item::class.' data type.');
+            }
+        }
+
+        if (!$item instanceof Item) {
+            $item = Item::fromHttpValue($item);
         }
 
         $validation = self::validator()->validate($item);
@@ -109,24 +133,18 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
         return $validator;
     }
 
-    /**
-     * Returns a new instance with a server identifier as a string which is already hit.
-     */
-    public static function serverIdentifierAsString(string $identifier): self
+    public function toStructuredField(): Item
     {
-        return new self($identifier, hit: true, forward: null, ttl: null, key: null, detail: null);
-    }
-
-    /**
-     * Returns a new instance with a server identifier as a Token which is already hit.
-     */
-    public static function serverIdentifierAsToken(Token|string $identifier): self
-    {
-        if (!$identifier instanceof Token) {
-            $identifier = Token::tryFromString($identifier) ?? throw new Exception('The handled request cache identifier must be a valid Token.');
-        }
-
-        return new self($identifier, hit: true, forward: null, ttl:null, key:null, detail: null);
+        return Item::new($this->servedBy)
+            ->withParameters(
+                Parameters::new()
+                    ->append(Properties::Hit->value, $this->hit)
+                    ->mergePairs($this->forward ?? [])
+                    ->append(Properties::TimeToLive->value, $this->ttl)
+                    ->append(Properties::Key->value, $this->key)
+                    ->append(Properties::Detail->value, $this->detail)
+                    ->filter(fn (array $pair): bool => false !== $pair[1]->value()),
+            );
     }
 
     /**
@@ -143,20 +161,6 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     public function __toString(): string
     {
         return $this->toStructuredField()->toHttpValue();
-    }
-
-    public function toStructuredField(): Item
-    {
-        return Item::new($this->servedBy)
-            ->withParameters(
-                Parameters::new()
-                    ->append(Properties::Hit->value, $this->hit)
-                    ->mergePairs($this->forward ?? [])
-                    ->append(Properties::TimeToLive->value, $this->ttl)
-                    ->append(Properties::Key->value, $this->key)
-                    ->append(Properties::Detail->value, $this->detail)
-                    ->filter(fn (array $pair): bool => false !== $pair[1]->value()),
-            );
     }
 
     /**

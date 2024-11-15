@@ -33,9 +33,9 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /** @var array<HandledRequestCache> */
     private array $caches;
 
-    public function __construct(HandledRequestCache|Stringable|string ...$caches)
+    public function __construct(HandledRequestCache|Item|StructuredFieldProvider|Stringable|string ...$caches)
     {
-        $this->caches = array_map(fn (HandledRequestCache|Stringable|string $value) => match (true) {
+        $this->caches = array_map(fn (StructuredFieldProvider|Item|Stringable|string $value) => match (true) {
             $value instanceof HandledRequestCache => $value,
             default => HandledRequestCache::fromHttpValue($value),
         }, $caches);
@@ -45,28 +45,38 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
      * Returns an instance from PHP SAPI.
      *
      * @param array<string, string> $server
+     *
+     * @throws Exception If the field is not found
      */
     public static function fromSapi(array $server = [], string $name = self::SAPI_NAME): self
     {
-        return self::fromHttpValue($server[$name] ?? '');
+        if (!array_key_exists($name, $server)) {
+            throw new Exception('The field `'.$name.'` is not present.');
+        }
+
+        return self::fromHttpValue($server[$name]);
     }
 
     /**
      * Returns an instance from a Header Line and the optional response status code.
      */
-    public static function fromHttpValue(Stringable|string $httpHeaderLine = '', ?int $statusCode = null): self
+    public static function fromHttpValue(OuterList|StructuredFieldProvider|Stringable|string $list = '', ?int $statusCode = null): self
     {
-        return self::fromStructuredField(OuterList::fromHttpValue($httpHeaderLine), $statusCode);
-    }
+        if ($list instanceof StructuredFieldProvider) {
+            $className = $list::class;
+            $list = $list->toStructuredField();
+            if (!$list instanceof OuterList) {
+                throw new Exception('The structured field provider `'.$className.'` must return an '.OuterList::class.' data type.');
+            }
+        }
 
-    /**
-     * Returns an instance from a Structured Field List and the optional response status code.
-     */
-    private static function fromStructuredField(OuterList $list, ?int $statusCode = null): self
-    {
+        if (!$list instanceof OuterList) {
+            $list = OuterList::fromHttpValue($list);
+        }
+
         return new self(...$list->map(
             fn (Item|InnerList $item, int $offset): HandledRequestCache => match (true) {
-                $item instanceof Item => HandledRequestCache::fromStructuredField($item, $statusCode),
+                $item instanceof Item => HandledRequestCache::fromHttpValue($item, $statusCode),
                 default => throw new Exception('The list must only contain item structure representing handled request cache.'),
             }
         ));
@@ -188,14 +198,27 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
      */
     public function contains(Token|string $serverIdentifier): bool
     {
-        $validate = fn (Token|string $token): bool => $token instanceof Token ? $token->equals($serverIdentifier) : $token === $serverIdentifier;
-        foreach ($this->caches as $member) {
+        return null !== $this->indexOf($serverIdentifier);
+    }
+
+    /**
+     * Returns the index for a Handled request cache based on the provided server identifier.
+     *
+     * Return the index or null if the index does not exist.
+     */
+    public function indexOf(Token|string $serverIdentifier): ?int
+    {
+        $validate = fn (Token|string $token): bool => match (true) {
+            $token instanceof Token => $token->equals($serverIdentifier),
+            default => $token === $serverIdentifier,
+        };
+        foreach ($this->caches as $offset => $member) {
             if ($validate($member->servedBy)) {
-                return true;
+                return $offset;
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -227,7 +250,7 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     /**
      * Append a new handled request cache at the end of the field.
      */
-    public function push(HandledRequestCache|Stringable|string ...$values): self
+    public function push(HandledRequestCache|Item|StructuredFieldProvider|Stringable|string ...$values): self
     {
         return match ($values) {
             [] => $this,

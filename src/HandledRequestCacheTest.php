@@ -57,7 +57,7 @@ final class HandledRequestCacheTest extends TestCase
         self::assertTrue($cacheForwarded->forward->collapsed);
 
         self::assertSame('"10.0.0.7";fwd=miss;fwd-status=304;collapsed;ttl=376;detail="This is a detail"', (string) $cacheForwarded);
-        self::assertEquals($cacheForwarded, HandledRequestCache::fromStructuredField(Item::fromRfc9651($cacheForwarded)));
+        self::assertEquals($cacheForwarded, HandledRequestCache::fromHttpValue(Item::fromRfc9651($cacheForwarded)));
 
         $cacheHit = $cacheForwarded->wasHit();
         self::assertNull($cacheHit->forward);
@@ -97,7 +97,8 @@ final class HandledRequestCacheTest extends TestCase
         self::assertFalse($fieldList->contains('Foobar'));
         self::assertTrue($fieldList->contains(Token::fromString('BrowserCache')));
         self::assertFalse($fieldList->contains('BrowserCache'));
-
+        self::assertSame(2, $fieldList->indexOf(Token::fromString('BrowserCache')));
+        self::assertNull($fieldList->indexOf('foobar'));
         self::assertTrue($closestToOrigin->hit);
         self::assertFalse($intermediary->hit);
         self::assertFalse($closestToClient->hit);
