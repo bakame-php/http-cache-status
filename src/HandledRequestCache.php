@@ -10,7 +10,7 @@ use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
 use Bakame\Http\StructuredFields\Validation\ItemValidator;
-use Bakame\Http\StructuredFields\Validation\ProcessedItem;
+use Bakame\Http\StructuredFields\Validation\ValidatedItem;
 use Stringable;
 
 /**
@@ -61,10 +61,10 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
             throw new Exception('The submitted item is an invalid handled request cache status', previous: $validation->errors->toException());
         }
 
-        /** @var ProcessedItem $parsedItem */
-        $parsedItem = $validation->data;
+        /** @var ValidatedItem $validatedItem */
+        $validatedItem = $validation->data;
         /** @var Token|string $servedBy */
-        $servedBy = $parsedItem->value;
+        $servedBy = $validatedItem->value;
         /**
          * @var array{
          *    hit: bool,
@@ -77,7 +77,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
          *    stored: bool
          * } $parameters
          */
-        $parameters = $parsedItem->parameters->values();
+        $parameters = $validatedItem->parameters->all();
 
         $forward = null === $parameters[Properties::Forward->value] ? null : Forward::fromReason($parameters[Properties::Forward->value])
             ->statusCode($parameters[Properties::ForwardStatusCode->value] ?? $statusCode)
