@@ -36,12 +36,12 @@ enum Properties: string
 
             $validator = ParametersValidator::new()
                 ->filterByCriteria(function (Parameters $parameters): bool|string {
-                    if (!$parameters->allowedKeys(array_map(fn (self $case) => $case->value, self::cases()))) {
+                    if (!$parameters->allowedNames(array_map(fn (self $case) => $case->value, self::cases()))) {
                         return 'The cache contains invalid parameters.';
                     }
 
-                    $hit = !in_array($parameters->valueByKey(self::Hit->value, default: false), [null, false], true);
-                    $fwd = $parameters->valueByKey(self::Forward->value);
+                    $hit = !in_array($parameters->valueByName(self::Hit->value, default: false), [null, false], true);
+                    $fwd = $parameters->valueByName(self::Forward->value);
 
                     return match (true) {
                         !$hit && null !== $fwd,
