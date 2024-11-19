@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\Parameters;
-use Bakame\Http\StructuredFields\StructuredField;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 
 /**
- * @phpstan-import-type SfType from StructuredField
+ * @phpstan-import-type SfType from StructuredFieldProvider
  */
 final class Forward implements StructuredFieldProvider
 {
