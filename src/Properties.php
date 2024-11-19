@@ -61,22 +61,22 @@ enum Properties: string
     public function validate(): array
     {
         return match ($this) {
-            self::Hit => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean.", 'default' => false],
-            self::TimeToLive => ['validate' => fn (mixed $value): bool|string => is_int($value) ? true : "The '{name}' parameter must be an integer."],
-            self::Key => ['validate' => fn (mixed $value): bool|string => is_string($value) ? true : "The '{name}' parameter must be a string."],
-            self::Detail => ['validate' => fn (mixed $value): bool|string => Type::fromVariable($value)->isOneOf(Type::String, Type::Token) ? true : "The '{name}' parameter must be a string."],
+            self::Hit => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean; {value} given.", 'default' => false],
+            self::TimeToLive => ['validate' => fn (mixed $value): bool|string => is_int($value) ? true : "The '{name}' parameter must be an integer; {value} given."],
+            self::Key => ['validate' => fn (mixed $value): bool|string => is_string($value) ? true : "The '{name}' parameter must be a string; {value} given."],
+            self::Detail => ['validate' => fn (mixed $value): bool|string => Type::fromVariable($value)->isOneOf(Type::String, Type::Token) ? true : "The '{name}' parameter must be a string; {value} given."],
             self::Forward => ['validate' => fn (mixed $value): bool|string => match (true) {
-                !$value instanceof Token => "The '{name}' parameter must be a Token.",
+                !$value instanceof Token => "The '{name}' parameter must be a Token; {value} given.",
                 null === ForwardedReason::tryFromToken($value) => "The '{name}' parameter Token value '{value}' is unknown or unsupported.",
                 default => true,
             }],
             self::ForwardStatusCode => ['validate' => fn (mixed $value): bool|string => match (true) {
-                !is_int($value) => "The '{name}' parameter must be an integer.",
+                !is_int($value) => "The '{name}' parameter must be an integer; {value} given.",
                 $value < 100 || $value > 599 => "The '{name}' parameter value '{value}' must be a valid HTTP status code",
                 default => true,
             }],
-            self::Stored => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean.", 'default' => false],
-            self::Collapsed => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean.", 'default' => false],
+            self::Stored => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean; {value} given.", 'default' => false],
+            self::Collapsed => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean; {value} given.", 'default' => false],
         };
     }
 }
