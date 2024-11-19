@@ -8,7 +8,7 @@ use Bakame\Http\StructuredFields\Type;
 use Bakame\Http\StructuredFields\Validation\ParametersValidator;
 
 /**
- * @phpstan-import-type SfParameterKeyRule from ParametersValidator
+ * @phpstan-import-type SfParameterNameRule from ParametersValidator
  */
 enum Properties: string
 {
@@ -27,10 +27,10 @@ enum Properties: string
         static $validator;
 
         if (null === $validator) {
-            /** @var array<string, SfParameterKeyRule> $filters */
+            /** @var array<string, SfParameterNameRule> $filters */
             $filters = array_reduce(
                 self::cases(),
-                fn (array $rules, self $property): array => [...$rules, ...[$property->value => $property->validateKey()]],
+                fn (array $rules, self $property): array => [...$rules, ...[$property->value => $property->validate()]],
                 []
             );
 
@@ -49,34 +49,34 @@ enum Properties: string
                         default => "The '".self::Hit->value."' and '".self::Forward->value."' parameters are mutually exclusive.",
                     };
                 })
-                ->filterByKeys($filters);
+                ->filterByNames($filters);
         }
 
         return $validator;
     }
 
     /**
-     * @return SfParameterKeyRule
+     * @return SfParameterNameRule
      */
-    public function validateKey(): array
+    public function validate(): array
     {
         return match ($this) {
-            self::Hit => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{key}' parameter must be a boolean.", 'default' => false],
-            self::TimeToLive => ['validate' => fn (mixed $value): bool|string => is_int($value) ? true : "The '{key}' parameter must be an integer."],
-            self::Key => ['validate' => fn (mixed $value): bool|string => is_string($value) ? true : "The '{key}' parameter must be a string."],
-            self::Detail => ['validate' => fn (mixed $value): bool|string => Type::fromVariable($value)->isOneOf(Type::String, Type::Token) ? true : "The '{key}' parameter must be a string."],
+            self::Hit => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean.", 'default' => false],
+            self::TimeToLive => ['validate' => fn (mixed $value): bool|string => is_int($value) ? true : "The '{name}' parameter must be an integer."],
+            self::Key => ['validate' => fn (mixed $value): bool|string => is_string($value) ? true : "The '{name}' parameter must be a string."],
+            self::Detail => ['validate' => fn (mixed $value): bool|string => Type::fromVariable($value)->isOneOf(Type::String, Type::Token) ? true : "The '{name}' parameter must be a string."],
             self::Forward => ['validate' => fn (mixed $value): bool|string => match (true) {
-                !$value instanceof Token => "The '{key}' parameter must be a Token.",
-                null === ForwardedReason::tryFromToken($value) => "The '{key}' parameter Token value '{value}' is unknown or unsupported.",
+                !$value instanceof Token => "The '{name}' parameter must be a Token.",
+                null === ForwardedReason::tryFromToken($value) => "The '{name}' parameter Token value '{value}' is unknown or unsupported.",
                 default => true,
             }],
             self::ForwardStatusCode => ['validate' => fn (mixed $value): bool|string => match (true) {
-                !is_int($value) => "The '{key}' parameter must be an integer.",
-                $value < 100 || $value > 599 => "The '{key}' parameter value '{value}' must be a valid HTTP status code",
+                !is_int($value) => "The '{name}' parameter must be an integer.",
+                $value < 100 || $value > 599 => "The '{name}' parameter value '{value}' must be a valid HTTP status code",
                 default => true,
             }],
-            self::Stored => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{key}' parameter must be a boolean.", 'default' => false],
-            self::Collapsed => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{key}' parameter must be a boolean.", 'default' => false],
+            self::Stored => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean.", 'default' => false],
+            self::Collapsed => ['validate' => fn (mixed $value): bool|string => is_bool($value) ? true : "The '{name}' parameter must be a boolean.", 'default' => false],
         };
     }
 }
