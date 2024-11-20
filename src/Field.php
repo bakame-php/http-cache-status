@@ -59,6 +59,8 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
 
     /**
      * Returns an instance from a Header Line and the optional response status code.
+     *
+     * Invalid entries will be filtered out according to Structured Field RFC.
      */
     public static function fromHttpValue(OuterList|StructuredFieldProvider|Stringable|string $list = '', ?int $statusCode = null): self
     {
@@ -74,12 +76,21 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
             $list = OuterList::fromHttpValue($list);
         }
 
-        return new self(...$list->map(
-            fn (Item|InnerList $item, int $offset): HandledRequestCache => match (true) {
-                $item instanceof Item => HandledRequestCache::fromHttpValue($item, $statusCode),
-                default => throw new Exception('The list must only contain item structure representing handled request cache.'),
+        /** @var array<HandledRequestCache> $caches */
+        $caches = $list->reduce(function (array $filteredCache, Item|InnerList $value, int $offset) use ($statusCode): array { /* @phpstan-ignore-line */
+            if ($value instanceof InnerList) {
+                return $filteredCache;
             }
-        ));
+
+            try {
+                $filteredCache[] = HandledRequestCache::fromHttpValue($value, $statusCode);
+            } catch (Exception) {
+
+            }
+            return $filteredCache;
+        }, []);
+
+        return new self(...$caches);
     }
 
     /**
