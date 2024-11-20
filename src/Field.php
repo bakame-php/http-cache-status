@@ -8,7 +8,6 @@ use ArrayAccess;
 use Bakame\Http\StructuredFields\InnerList;
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\OuterList;
-use Bakame\Http\StructuredFields\StructuredFieldError;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use Countable;
@@ -101,9 +100,6 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
         return OuterList::new(...$this->caches);
     }
 
-    /**
-     * @throws StructuredFieldError
-     */
     public function __toString(): string
     {
         return $this->toStructuredField()->toHttpValue();
