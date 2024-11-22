@@ -9,6 +9,7 @@ use Bakame\Http\StructuredFields\InnerList;
 use Bakame\Http\StructuredFields\Item;
 use Bakame\Http\StructuredFields\OuterList;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
+use Bakame\Http\StructuredFields\SyntaxError;
 use Bakame\Http\StructuredFields\Token;
 use Countable;
 use Iterator;
@@ -64,15 +65,18 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
     public static function fromHttpValue(OuterList|StructuredFieldProvider|Stringable|string $list = '', ?int $statusCode = null): self
     {
         if ($list instanceof StructuredFieldProvider) {
-            $className = $list::class;
             $list = $list->toStructuredField();
             if (!$list instanceof OuterList) {
-                throw new Exception('The structured field provider `'.$className.'` must return an '.OuterList::class.' data type.');
+                return new self();
             }
         }
 
         if (!$list instanceof OuterList) {
-            $list = OuterList::fromHttpValue($list);
+            try {
+                $list = OuterList::fromHttpValue($list);
+            } catch (SyntaxError) {
+                return new self();
+            }
         }
 
         /** @var array<HandledRequestCache> $caches */

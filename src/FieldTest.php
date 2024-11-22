@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Bakame\Http\CacheStatus;
 
+use Bakame\Http\StructuredFields\Item;
+use Bakame\Http\StructuredFields\OuterList;
+use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use GuzzleHttp\Psr7\HttpFactory;
 use PHPUnit\Framework\Attributes\Test;
@@ -91,5 +94,24 @@ final class FieldTest extends TestCase
         $this->expectException(Exception::class);
 
         new Field('ForwardProxyCache; hit; fwd=uri-miss; collapsed; stored');
+    }
+
+    #[Test]
+    public function creating_a_new_instance_with_an_invalid_structured_field_provider_returns_an_empty_field(): void
+    {
+        $invalidField = new class () implements StructuredFieldProvider {
+            public function toStructuredField(): Item
+            {
+                return Item::true();
+            }
+        };
+
+        self::assertTrue(Field::fromHttpValue($invalidField)->isEmpty());
+    }
+
+    #[Test]
+    public function creating_a_new_instance_with_an_invalid_list_returns_an_empty_field(): void
+    {
+        self::assertTrue(Field::fromHttpValue(OuterList::fromHttpValue('a, b, c'))->isEmpty());
     }
 }
