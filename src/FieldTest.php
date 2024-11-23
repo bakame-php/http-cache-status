@@ -97,7 +97,7 @@ final class FieldTest extends TestCase
     }
 
     #[Test]
-    public function creating_a_new_instance_with_an_invalid_structured_field_provider_returns_an_empty_field(): void
+    public function creating_a_new_instance_from_a_header_representation_with_an_invalid_structured_field_provider_returns_an_empty_field(): void
     {
         $invalidField = new class () implements StructuredFieldProvider {
             public function toStructuredField(): Item
@@ -110,7 +110,7 @@ final class FieldTest extends TestCase
     }
 
     #[Test]
-    public function creating_a_new_instance_with_an_invalid_list_returns_an_empty_field(): void
+    public function creating_a_new_instance_from_a_header_representation_with_an_invalid_list_returns_an_empty_field(): void
     {
         self::assertTrue(Field::fromHttpValue(OuterList::fromHttpValue('a, b, c'))->isEmpty());
     }
