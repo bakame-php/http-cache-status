@@ -84,10 +84,9 @@ final class Forward implements StructuredFieldProvider
     {
         return Parameters::new()
             ->append(Properties::Forward->value, $this->reason->toToken())
-            ->append(Properties::ForwardStatusCode->value, $this->statusCode)
-            ->append(Properties::Stored->value, $this->stored)
-            ->append(Properties::Collapsed->value, $this->collapsed)
-            ->filter(fn (array $pair): bool => false !== $pair[1]->value());
+            ->when(null !== $this->statusCode, fn (Parameters $parameters) => $parameters->append(Properties::ForwardStatusCode->value, $this->statusCode)) /* @phpstan-ignore-line */
+            ->when(true === $this->stored, fn (Parameters $parameters) => $parameters->append(Properties::Stored->value, $this->stored))
+            ->when(true === $this->collapsed, fn (Parameters $parameters) => $parameters->append(Properties::Collapsed->value, $this->collapsed));
     }
 
     public function equals(mixed $other): bool

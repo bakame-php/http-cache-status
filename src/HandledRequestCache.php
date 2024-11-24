@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Bakame\Http\CacheStatus;
 
 use Bakame\Http\StructuredFields\Item;
-use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
@@ -136,15 +135,11 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     public function toStructuredField(): Item
     {
         return Item::new($this->servedBy)
-            ->withParameters(
-                Parameters::new()
-                    ->append(Properties::Hit->value, $this->hit)
-                    ->mergePairs($this->forward ?? [])
-                    ->append(Properties::TimeToLive->value, $this->ttl)
-                    ->append(Properties::Key->value, $this->key)
-                    ->append(Properties::Detail->value, $this->detail)
-                    ->filter(fn (array $pair): bool => false !== $pair[1]->value()),
-            );
+            ->when(true === $this->hit, fn (Item $item) => $item->appendParameter(Properties::Hit->value, $this->hit))
+            ->when(null !== $this->forward, fn (Item $item) => $item->mergeParametersByPairs($this->forward))  /* @phpstan-ignore-line */
+            ->when(null !== $this->ttl, fn (Item $item) => $item->appendParameter(Properties::TimeToLive->value, $this->ttl))  /* @phpstan-ignore-line */
+            ->when(null !== $this->key, fn (Item $item) => $item->appendParameter(Properties::Key->value, $this->key))  /* @phpstan-ignore-line */
+            ->when(null !== $this->detail, fn (Item $item) => $item->appendParameter(Properties::Detail->value, $this->detail));  /* @phpstan-ignore-line */
     }
 
     /**
