@@ -11,13 +11,13 @@ use Bakame\Http\StructuredFields\Token;
 /**
  * @phpstan-import-type SfType from StructuredFieldProvider
  */
-final class Forward implements StructuredFieldProvider
+final readonly class Forward implements StructuredFieldProvider
 {
     public function __construct(
-        public readonly ForwardedReason $reason,
-        public readonly ?int $statusCode = null,
-        public readonly bool $collapsed = false,
-        public readonly bool $stored = false,
+        public ForwardedReason $reason,
+        public ?int $statusCode = null,
+        public bool $collapsed = false,
+        public bool $stored = false,
     ) {
         if (null !== $this->statusCode && ($this->statusCode < 100 || $this->statusCode >= 600)) {
             throw new Exception('The forward statusCode must be a valid HTTP status code when present.');
@@ -85,8 +85,8 @@ final class Forward implements StructuredFieldProvider
         return Parameters::new()
             ->append(Properties::Forward->value, $this->reason->toToken())
             ->when(null !== $this->statusCode, fn (Parameters $parameters) => $parameters->append(Properties::ForwardStatusCode->value, $this->statusCode)) /* @phpstan-ignore-line */
-            ->when(true === $this->stored, fn (Parameters $parameters) => $parameters->append(Properties::Stored->value, $this->stored))
-            ->when(true === $this->collapsed, fn (Parameters $parameters) => $parameters->append(Properties::Collapsed->value, $this->collapsed));
+            ->when($this->stored, fn (Parameters $parameters) => $parameters->append(Properties::Stored->value, $this->stored))
+            ->when($this->collapsed, fn (Parameters $parameters) => $parameters->append(Properties::Collapsed->value, $this->collapsed));
     }
 
     public function equals(mixed $other): bool

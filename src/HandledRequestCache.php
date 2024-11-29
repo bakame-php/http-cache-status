@@ -17,15 +17,15 @@ use Stringable;
  *
  * @see https://www.rfc-editor.org/rfc/rfc9211.html
  */
-final class HandledRequestCache implements StructuredFieldProvider, Stringable
+final readonly class HandledRequestCache implements StructuredFieldProvider, Stringable
 {
     private function __construct(
-        public readonly Token|string $servedBy,
-        public readonly bool $hit,
-        public readonly ?Forward $forward,
-        public readonly ?int $ttl,
-        public readonly ?string $key,
-        public readonly Token|string|null $detail,
+        public Token|string $servedBy,
+        public bool $hit,
+        public ?Forward $forward,
+        public ?int $ttl,
+        public ?string $key,
+        public Token|string|null $detail,
     ) {
         match (true) {
             !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new Exception('The handled request cache identifier must be a Token or a string.'),
@@ -135,7 +135,7 @@ final class HandledRequestCache implements StructuredFieldProvider, Stringable
     public function toStructuredField(): Item
     {
         return Item::new($this->servedBy)
-            ->when(true === $this->hit, fn (Item $item) => $item->appendParameter(Properties::Hit->value, $this->hit))
+            ->when($this->hit, fn (Item $item) => $item->appendParameter(Properties::Hit->value, $this->hit))
             ->when(null !== $this->forward, fn (Item $item) => $item->mergeParametersByPairs($this->forward))  /* @phpstan-ignore-line */
             ->when(null !== $this->ttl, fn (Item $item) => $item->appendParameter(Properties::TimeToLive->value, $this->ttl))  /* @phpstan-ignore-line */
             ->when(null !== $this->key, fn (Item $item) => $item->appendParameter(Properties::Key->value, $this->key))  /* @phpstan-ignore-line */
