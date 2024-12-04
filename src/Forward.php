@@ -8,6 +8,8 @@ use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 
+use function is_string;
+
 /**
  * @phpstan-import-type SfType from StructuredFieldProvider
  */

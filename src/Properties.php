@@ -7,6 +7,12 @@ use Bakame\Http\StructuredFields\Token;
 use Bakame\Http\StructuredFields\Type;
 use Bakame\Http\StructuredFields\Validation\ParametersValidator;
 
+use function array_reduce;
+use function in_array;
+use function is_bool;
+use function is_int;
+use function is_string;
+
 /**
  * @phpstan-import-type SfParameterKeyRule from ParametersValidator
  */

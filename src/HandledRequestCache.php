@@ -12,6 +12,8 @@ use Bakame\Http\StructuredFields\Validation\ItemValidator;
 use Bakame\Http\StructuredFields\Validation\ValidatedItem;
 use Stringable;
 
+use function is_string;
+
 /**
  * A single handled request cache as per RFC9211.
  *
@@ -29,7 +31,7 @@ final readonly class HandledRequestCache implements StructuredFieldProvider, Str
     ) {
         match (true) {
             !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new Exception('The handled request cache identifier must be a Token or a string.'),
-            null !== $this->forward && $this->hit  => throw new Exception('The handled request cache can not be both a hit and forwarded.'),
+            null !== $this->forward && $this->hit => throw new Exception('The handled request cache can not be both a hit and forwarded.'),
             null === $this->forward && !$this->hit => throw new Exception('The handled request cache must be a hit or forwarded.'),
             null !== $this->key && !Type::String->supports($this->key) => throw new Exception('The `key` parameter must be a string or null.'),
             null !== $this->ttl && !Type::Integer->supports($this->ttl) => throw new Exception('The `ttl` parameter must be a integer or null.'),

@@ -7,6 +7,9 @@ namespace Bakame\Http\CacheStatus;
 use Bakame\Http\StructuredFields\Token;
 use Stringable;
 
+use function array_map;
+use function in_array;
+
 /**
  * The possible reason for forwarded cache.
  *

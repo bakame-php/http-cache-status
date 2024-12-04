@@ -17,6 +17,12 @@ use IteratorAggregate;
 use OutOfBoundsException;
 use Stringable;
 
+use function array_filter;
+use function array_key_exists;
+use function array_map;
+use function array_reverse;
+use function count;
+
 /**
  * The Cache-Status HTTP Response Header Field.
  *
