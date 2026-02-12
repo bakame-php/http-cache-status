@@ -22,7 +22,7 @@ final readonly class Forward implements StructuredFieldProvider
         public bool $stored = false,
     ) {
         if (null !== $this->statusCode && ($this->statusCode < 100 || $this->statusCode >= 600)) {
-            throw new InvalidSyntax('The forward statusCode must be a valid HTTP status code when present.');
+            throw new InvalidSyntaxException('The forward statusCode must be a valid HTTP status code when present.');
         }
     }
 
@@ -34,8 +34,8 @@ final readonly class Forward implements StructuredFieldProvider
     private static function filterReason(ForwardedReason|Token|string $reason): ForwardedReason
     {
         return match (true) {
-            is_string($reason) => ForwardedReason::tryFromToken(Token::tryFromString($reason)) ?? throw new InvalidSyntax('`'.$reason.'` is an invalid forward reason.'),
-            $reason instanceof Token => ForwardedReason::tryFromToken($reason) ?? throw new InvalidSyntax('`'.$reason->toString().'` is an invalid forward reason.'),
+            is_string($reason) => ForwardedReason::tryFromToken(Token::tryFromString($reason)) ?? throw new InvalidSyntaxException('`'.$reason.'` is an invalid forward reason.'),
+            $reason instanceof Token => ForwardedReason::tryFromToken($reason) ?? throw new InvalidSyntaxException('`'.$reason->toString().'` is an invalid forward reason.'),
             default => $reason,
         };
     }

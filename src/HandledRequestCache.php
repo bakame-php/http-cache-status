@@ -30,12 +30,12 @@ final readonly class HandledRequestCache implements StructuredFieldProvider, Str
         public Token|string|null $detail,
     ) {
         match (true) {
-            !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new InvalidSyntax('The handled request cache identifier must be a Token or a string.'),
-            null !== $this->forward && $this->hit => throw new InvalidSyntax('The handled request cache can not be both a hit and forwarded.'),
-            null === $this->forward && !$this->hit => throw new InvalidSyntax('The handled request cache must be a hit or forwarded.'),
-            null !== $this->key && !Type::String->supports($this->key) => throw new InvalidSyntax('The `key` parameter must be a string or null.'),
-            null !== $this->ttl && !Type::Integer->supports($this->ttl) => throw new InvalidSyntax('The `ttl` parameter must be a integer or null.'),
-            null !== $this->detail && !Type::String->supports($this->detail) && !Type::Token->supports($this->detail)  => throw new InvalidSyntax('The `detail` parameter must be a string or a Token when present.'),
+            !Type::Token->supports($this->servedBy) && !Type::String->supports($this->servedBy) => throw new InvalidSyntaxException('The handled request cache identifier must be a Token or a string.'),
+            null !== $this->forward && $this->hit => throw new InvalidSyntaxException('The handled request cache can not be both a hit and forwarded.'),
+            null === $this->forward && !$this->hit => throw new InvalidSyntaxException('The handled request cache must be a hit or forwarded.'),
+            null !== $this->key && !Type::String->supports($this->key) => throw new InvalidSyntaxException('The `key` parameter must be a string or null.'),
+            null !== $this->ttl && !Type::Integer->supports($this->ttl) => throw new InvalidSyntaxException('The `ttl` parameter must be a integer or null.'),
+            null !== $this->detail && !Type::String->supports($this->detail) && !Type::Token->supports($this->detail)  => throw new InvalidSyntaxException('The `detail` parameter must be a string or a Token when present.'),
             default => null,
         };
     }
@@ -54,7 +54,7 @@ final readonly class HandledRequestCache implements StructuredFieldProvider, Str
     public static function serverIdentifierAsToken(Token|string $identifier): self
     {
         if (!$identifier instanceof Token) {
-            $identifier = Token::tryFromString($identifier) ?? throw new InvalidSyntax('The handled request cache identifier must be a valid Token.');
+            $identifier = Token::tryFromString($identifier) ?? throw new InvalidSyntaxException('The handled request cache identifier must be a valid Token.');
         }
 
         return new self($identifier, hit: true, forward: null, ttl:null, key:null, detail: null);
@@ -66,14 +66,14 @@ final readonly class HandledRequestCache implements StructuredFieldProvider, Str
     public static function fromHttpValue(StructuredFieldProvider|Item|Stringable|string $item, ?int $statusCode = null): self
     {
         if (null !== $statusCode && ($statusCode < 100 || $statusCode > 599)) {
-            throw new InvalidSyntax('The default forward status code must be a valid HTTP status code when present.');
+            throw new InvalidSyntaxException('The default forward status code must be a valid HTTP status code when present.');
         }
 
         if ($item instanceof StructuredFieldProvider) {
             $className = $item::class;
             $item = $item->toStructuredField();
             if (!$item instanceof Item) {
-                throw new InvalidSyntax('The structured field provider `'.$className.'` must return an '.Item::class.' data type.');
+                throw new InvalidSyntaxException('The structured field provider `'.$className.'` must return an '.Item::class.' data type.');
             }
         }
 
@@ -83,7 +83,7 @@ final readonly class HandledRequestCache implements StructuredFieldProvider, Str
 
         $validation = self::validator()->validate($item);
         if ($validation->isFailed()) {
-            throw new InvalidSyntax('The submitted item is an invalid handled request cache status', previous: $validation->errors->toException());
+            throw new InvalidSyntaxException('The submitted item is an invalid handled request cache status', previous: $validation->errors->toException());
         }
 
         /** @var ValidatedItem $validatedItem */
@@ -187,7 +187,7 @@ final readonly class HandledRequestCache implements StructuredFieldProvider, Str
     public function wasForwarded(Forward|ForwardedReason|Token|string $forward): self
     {
         $forward = match (true) {
-            is_string($forward) => Forward::fromReason(ForwardedReason::tryFrom($forward) ?? throw new InvalidSyntax('The submitted string is not a valid server identifier.')),
+            is_string($forward) => Forward::fromReason(ForwardedReason::tryFrom($forward) ?? throw new InvalidSyntaxException('The submitted string is not a valid server identifier.')),
             $forward instanceof Token => Forward::fromReason(ForwardedReason::fromToken($forward)),
             $forward instanceof ForwardedReason => Forward::fromReason($forward),
             default => $forward,
@@ -240,7 +240,7 @@ final readonly class HandledRequestCache implements StructuredFieldProvider, Str
     public function withDetailAsToken(Token|string|null $detail): self
     {
         if (is_string($detail)) {
-            $detail = Token::tryFromString($detail) ?? throw new InvalidSyntax('The handled request cache detail must be a valid Token.');
+            $detail = Token::tryFromString($detail) ?? throw new InvalidSyntaxException('The handled request cache detail must be a valid Token.');
         }
 
         return match (true) {

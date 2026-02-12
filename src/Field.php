@@ -51,11 +51,11 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
      *
      * @param array<string, string> $server
      *
-     * @throws Exception If the field is not found
+     * @throws OffsetOutOfBoundsException If the field is not found
      */
     public static function fromSapi(array $server = [], string $name = self::SAPI_NAME): self
     {
-        array_key_exists($name, $server) || throw new IndexOutOfBounds('The field `'.$name.'` is not present.');
+        array_key_exists($name, $server) || throw new OffsetOutOfBoundsException('The field `'.$name.'` is not present.');
 
         return self::fromHttpValue($server[$name]);
     }
@@ -248,17 +248,17 @@ class Field implements ArrayAccess, IteratorAggregate, Countable, StructuredFiel
      */
     public function offsetGet(mixed $offset): HandledRequestCache
     {
-        return $this->nth($offset) ?? throw new IndexOutOfBounds('Offset '.$offset.' does not exist in the request cache.');
+        return $this->nth($offset) ?? throw new OffsetOutOfBoundsException('Offset '.$offset.' does not exist in the request cache.');
     }
 
     public function offsetUnset(mixed $offset): void
     {
-        throw new ReadOnlyAccess(self::class.' instances are read-only and cannot be modified using '.ArrayAccess::class.' methods.');
+        throw new ReadOnlyAccessException(self::class.' instances are read-only and cannot be modified using '.ArrayAccess::class.' methods.');
     }
 
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        throw new ReadOnlyAccess(self::class.' instances are read-only and cannot be modified using '.ArrayAccess::class.' methods.');
+        throw new ReadOnlyAccessException(self::class.' instances are read-only and cannot be modified using '.ArrayAccess::class.' methods.');
     }
 
     /**
