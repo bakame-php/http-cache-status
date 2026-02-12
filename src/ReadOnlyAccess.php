@@ -4,6 +4,6 @@ declare(strict_types=1);
 
 namespace Bakame\Http\CacheStatus;
 
-class Exception extends \Exception
+class ReadOnlyAccess extends Exception
 {
 }

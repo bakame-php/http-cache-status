@@ -33,7 +33,7 @@ enum ForwardedReason: string
 
     public static function fromToken(Token|Stringable|string $token): self
     {
-        return self::tryFromToken($token) ?? throw new Exception('The token represents an invalid value.');
+        return self::tryFromToken($token) ?? throw new InvalidSyntax('The token represents an invalid value.');
     }
 
     public static function tryFromToken(Token|Stringable|string|null $token): ?self
