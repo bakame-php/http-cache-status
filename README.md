@@ -56,7 +56,7 @@ $cacheClosestToTheOrigin = $cacheStatus->closestToOrigin(); // the handled reque
 $cacheClosestToTheClient = $cacheStatus->closestToUser(); // the handled request cache closest to the user
 ```
 
-Both methods return `null` if the cache does not exist or a `HandledRequestCache` instance.
+Both methods return `null` if no `HandledRequestCache` instance is found.
 
 
 ### The Handled Request Cache object
@@ -71,20 +71,27 @@ $cacheClosestToTheClient->forward->statusCode; // return 304
 
 A `HandledRequestCache` instance contains information about the cache and how it was handled for the current message.
 In particular, in compliance with the RFC, if the `forward` property is present you will get extra information
-regarding the reason why the cache was forwarded.
+regarding the reason why the cache was forwarded. From the POV of the cache the only required check 
+needed is the following:
 
 ```php
-
-$cacheClosestToTheClient->forward->reason; // return ForwardReason::UriMiss
-$cacheClosestToTheClient->forward->statusCode; // return 304
-if ($cacheClosestToTheClient->forwardReason->isOneOf(ForwardedReason::Miss, ForwardedReason::UriMiss)) {
-    //you can do something useful here
+if ($cacheClosestToTheOrigin->hit) {
+    //this is a hit, the 'forward' property is null
+    $cacheClosestToTheOrigin->forward; // returns null
+} else {
+    //not a hit, the 'forward' property is a Forward instance
+    $cacheClosestToTheOrigin->forward; // return Forward class
+    $cacheClosestToTheClient->forward->reason; // return ForwardReason::UriMiss
+    $cacheClosestToTheClient->forward->statusCode; // return 304
+    if ($cacheClosestToTheClient->forwardReason->isOneOf(ForwardedReason::Miss, ForwardedReason::UriMiss)) {
+        //you can do something useful here
+    }
 }
 ```
 
 The class lists all the available reason via the `ForwardedReason` Enum.
 
-Last but not least you can push more `HandledRequestCache` instances to the `Field` container using the `push` method.
+You can push more `HandledRequestCache` instances to the `Field` container using the `push` method.
 The method supports pushing `HandledRequestCache` instances as well as HTTP text representation of the handled request
 cache.
 
