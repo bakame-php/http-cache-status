@@ -1,7 +1,11 @@
-Cache-Status HTTP Response Header Field
+Cache-Status HTTP Header Field
 -----
 
 This package contains classes used to parse, validate and manipulate the [Cache-Status HTTP Response Header Field](https://www.rfc-editor.org/rfc/rfc9211.html).
+
+## System Requirements
+
+**PHP >= 8.2** is required but the latest stable version of PHP is recommended.
 
 ## Usage
 
