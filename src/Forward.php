@@ -8,8 +8,6 @@ use Bakame\Http\StructuredFields\Parameters;
 use Bakame\Http\StructuredFields\StructuredFieldProvider;
 use Bakame\Http\StructuredFields\Token;
 
-use function is_string;
-
 /**
  * @phpstan-import-type SfType from StructuredFieldProvider
  */
@@ -34,9 +32,9 @@ final readonly class Forward implements StructuredFieldProvider
     private static function filterReason(ForwardedReason|Token|string $reason): ForwardedReason
     {
         return match (true) {
-            is_string($reason) => ForwardedReason::tryFromToken(Token::tryFromString($reason)) ?? throw new InvalidSyntaxException('`'.$reason.'` is an invalid forward reason.'),
+            $reason instanceof ForwardedReason => $reason,
             $reason instanceof Token => ForwardedReason::tryFromToken($reason) ?? throw new InvalidSyntaxException('`'.$reason->toString().'` is an invalid forward reason.'),
-            default => $reason,
+            default => ForwardedReason::tryFromToken(Token::tryFromString($reason)) ?? throw new InvalidSyntaxException('`'.$reason.'` is an invalid forward reason.'),
         };
     }
 
