@@ -38,7 +38,7 @@
         "friendsofphp/php-cs-fixer": "^3.94.0",
         "phpunit/phpunit": "^11.5.53 || ^12.5.11 || ^13.0.2",
         "symfony/var-dumper": "^6.4.15 || ^7.4.4 || ^v8.0.4",
-        "guzzlehttp/psr7": "^2.8",
+        "guzzlehttp/psr7": "^2.8 || ^3.0",
         "phpstan/phpstan": "^2.1.39",
         "phpstan/phpstan-phpunit": "^2.0.15",
         "phpstan/phpstan-deprecation-rules": "^2.0.4",
